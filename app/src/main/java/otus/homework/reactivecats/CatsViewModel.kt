@@ -5,40 +5,49 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Flowable
+import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
+    private val catsService: CatsService,
     localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+    private val compositeDisposable = CompositeDisposable()
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+    init {
+
+        compositeDisposable.add(
+            getFacts()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnError { _catsLiveData.value = Error(it.toString()) }
+                .subscribe { _catsLiveData.value = Success(it) }
+        )
+
     }
 
-    fun getFacts() {}
+    fun getT(): Single<Fact> = Single.error(IOException())
+
+    private fun getFacts(): Flowable<Fact> =
+        catsService.getCatFact().first(Fact(""))
+            .onErrorResumeNext { LocalCatFactsGenerator(context).generateCatFact() }
+            .delay(2, TimeUnit.SECONDS)
+            .repeat()
+
+    override fun onCleared() {
+        super.onCleared()
+        compositeDisposable.dispose()
+    }
 }
 
 class CatsViewModelFactory(
