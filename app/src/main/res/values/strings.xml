@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Reactive Cats</string>
+    <string name="default_error_text">No cats available</string>
+
+
+    <string-array name="local_cat_facts">
+        <item>Cats have 230 bones, while humans only have 206.</item>
+        <item>Cats have whiskers on the backs of their front legs, as well.</item>
+        <item>Some cats are ambidextrous, but 40 percent are either left- or right-pawed.</item>
+        <item>Cats live longer when they stay indoors.</item>
+        <item>Cats can spend up to a third of their waking hours grooming.</item>
+        <item>Cats will refuse an unpalatable food to the point of starvation.</item>
+    </string-array>
+</resources>
