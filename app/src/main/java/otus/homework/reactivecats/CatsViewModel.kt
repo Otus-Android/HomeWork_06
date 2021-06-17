@@ -34,15 +34,12 @@ class CatsViewModel(
 
     private fun getFacts() {
         getFactDisposable = catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
             .repeatWhen { completed ->
                 completed.delay(2000, TimeUnit.MILLISECONDS)
             }
-            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
-            .retryWhen { errorObservable ->
-                errorObservable.delay(2000, TimeUnit.MILLISECONDS)
-            }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
             .subscribe { _catsLiveData.value = Success(it) }
     }
 
