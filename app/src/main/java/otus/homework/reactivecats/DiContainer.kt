@@ -1,6 +1,7 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import io.reactivex.plugins.RxJavaPlugins
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
