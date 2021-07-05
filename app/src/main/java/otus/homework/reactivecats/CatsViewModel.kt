@@ -1,7 +1,9 @@
 package otus.homework.reactivecats
 
-import android.content.Context
+import android.util.Log
 import androidx.lifecycle.*
+import io.reactivex.Observable
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
@@ -9,9 +11,8 @@ import java.util.concurrent.TimeUnit
 
 
 class CatsViewModel(
-    val catsService: CatsService,
-    val localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator
 ) : ViewModel(), LifecycleObserver {
 
     private val _catsLiveData = MutableLiveData<Result>()
@@ -33,21 +34,23 @@ class CatsViewModel(
     }
 
     private fun getFacts() {
-        getFactDisposable = catsService.getCatFact()
-            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
-            .repeatWhen { completed ->
-                completed.delay(2000, TimeUnit.MILLISECONDS)
-            }
+        getFactDisposable = Observable
+            .interval(2000, TimeUnit.MILLISECONDS)
+            .doOnNext { Log.d(this::class.simpleName, "getFacts() onNext $it") }
+            .doOnError { Log.d(this::class.simpleName, "getFacts() onError ${it.localizedMessage ?: "Unknown error"}") }
+            .flatMap { catsService.getCatFact().onErrorResumeNext { localCatFactsGenerator.generateCatFact() }.toObservable() }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe { _catsLiveData.value = Success(it) }
+            .subscribe({ fact ->
+                _catsLiveData.value = Success(fact)
+            }, { ex ->
+                _catsLiveData.value = Error(ex.localizedMessage ?: "Unknown error")
+            })
     }
 
     private fun getFact() {
 
         getFactDisposable = catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
             .repeatWhen { completed ->
                 completed.delay(5, TimeUnit.SECONDS)
             }
@@ -55,6 +58,8 @@ class CatsViewModel(
             .retryWhen { errorObservable ->
                 errorObservable.delay(5, TimeUnit.SECONDS)
             }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
             .subscribe { _catsLiveData.value = Success(it) }
     }
 }
@@ -62,12 +67,11 @@ class CatsViewModel(
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
 ) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(catsRepository, localCatFactsGenerator) as T
 }
 
 sealed class Result
