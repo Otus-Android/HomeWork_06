@@ -9,14 +9,20 @@ class LocalCatFactsGenerator(
     private val context: Context
 ) {
 
+    private val localCatArray =  context.resources.getStringArray(R.array.local_cat_facts)
+
+    private fun getRandomFact(): Fact{
+        localCatArray.apply {
+            return Fact(this[Random.nextInt(size)])
+        }
+    }
+
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFact так,
      * чтобы она возвращала Fact со случайной строкой  из массива строк R.array.local_cat_facts
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
-    fun generateCatFact(): Single<Fact> {
-        return Single.never()
-    }
+    fun generateCatFact() = Single.just(getRandomFact())
 
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFactPeriodically так,
