@@ -39,8 +39,6 @@ class CatsViewModel(
                 )
             }
         )
-
-        getFacts()
     }
 
     private fun getFacts(): Flowable<Fact> = catsService.getCatFact()
