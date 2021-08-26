@@ -5,51 +5,109 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Observable
+import io.reactivex.disposables.CompositeDisposable
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val networkRepository: NetworkRepository,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+    private val compositeDisposable = CompositeDisposable()
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+    init {
+        /**
+         * choose some variant
+         */
+        getOneFact()
+//        getFacts()
+//        generateCatFacts()
+//        generateCatFactsPeriodically()
     }
 
-    fun getFacts() {}
+    private fun getOneFact() {
+        compositeDisposable.add(
+            networkRepository.getCatFacts()
+                .applySingleSchedulers()
+                .subscribe(
+                    {
+                        if (it != null) _catsLiveData.value = Success(it)
+                        else _catsLiveData.value =
+                            Error(context.getString(R.string.default_error_text))
+                    },
+                    { _catsLiveData.value = ServerError }
+                )
+        )
+    }
+
+    private fun getFacts() {
+        compositeDisposable.add(
+            Observable
+                .interval(TWO, TimeUnit.SECONDS)
+                .subscribe {
+                    networkRepository.getCatFacts()
+                        .applySingleSchedulers()
+                        .subscribe(
+                            {
+                                if (it != null) _catsLiveData.value = Success(it)
+                                else _catsLiveData.value = Error(context.getString(R.string.default_error_text))
+                            },
+                            {
+                                localCatFactsGenerator.generateCatFact().map {
+                                    _catsLiveData.value = Success(it)
+                                }
+                            }
+                        )
+                }
+        )
+    }
+
+    private fun generateCatFacts(){
+        compositeDisposable.add(
+            localCatFactsGenerator.generateCatFact()
+                .applySingleSchedulers()
+                .subscribe(
+                    { _catsLiveData.value = Success(it) },
+                    { _catsLiveData.value = Error(it.message.toString()) }
+                )
+        )
+    }
+
+    private fun generateCatFactsPeriodically(){
+        compositeDisposable.add(
+            localCatFactsGenerator.generateCatFactPeriodically()
+                .applyFlowableSchedulers()
+                .subscribe(
+                    { _catsLiveData.value = Success(it) },
+                    { _catsLiveData.value = Error(it.message.toString()) }
+                )
+        )
+    }
+
+    override fun onCleared() {
+        compositeDisposable.dispose()
+        super.onCleared()
+    }
+
+    companion object {
+        private const val TWO = 2L
+    }
 }
 
 class CatsViewModelFactory(
-    private val catsRepository: CatsService,
+    private val networkRepository: NetworkRepository,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
 ) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(networkRepository, localCatFactsGenerator, context) as T
 }
 
 sealed class Result

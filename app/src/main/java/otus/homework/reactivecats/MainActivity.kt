@@ -1,10 +1,9 @@
 package otus.homework.reactivecats
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.lifecycle.lifecycleScope
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -12,7 +11,7 @@ class MainActivity : AppCompatActivity() {
     private val diContainer = DiContainer()
     private val catsViewModel by viewModels<CatsViewModel> {
         CatsViewModelFactory(
-            diContainer.service,
+            diContainer.networkRepository,
             diContainer.localCatFactsGenerator(applicationContext),
             applicationContext
         )
