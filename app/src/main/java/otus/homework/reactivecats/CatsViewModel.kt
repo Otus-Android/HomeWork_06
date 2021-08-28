@@ -10,7 +10,7 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class CatsViewModel(
-    catsService: CatsService,
+    service: ActivitiesService,
     localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
@@ -19,8 +19,8 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
+        service.getActivity().enqueue(object : Callback<ActivityResponse> {
+            override fun onResponse(call: Call<ActivityResponse>, response: Response<ActivityResponse>) {
                 if (response.isSuccessful && response.body() != null) {
                     _catsLiveData.value = Success(response.body()!!)
                 } else {
@@ -32,7 +32,7 @@ class CatsViewModel(
                 }
             }
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
+            override fun onFailure(call: Call<ActivityResponse>, t: Throwable) {
                 _catsLiveData.value = ServerError
             }
         })
@@ -42,7 +42,7 @@ class CatsViewModel(
 }
 
 class CatsViewModelFactory(
-    private val catsRepository: CatsService,
+    private val catsRepository: ActivitiesService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
 ) :
@@ -53,6 +53,6 @@ class CatsViewModelFactory(
 }
 
 sealed class Result
-data class Success(val fact: Fact) : Result()
+data class Success(val fact: ActivityResponse) : Result()
 data class Error(val message: String) : Result()
 object ServerError : Result()
