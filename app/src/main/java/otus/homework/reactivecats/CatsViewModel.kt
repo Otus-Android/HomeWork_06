@@ -1,55 +1,91 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Flowable
+import io.reactivex.Scheduler
+import io.reactivex.disposables.CompositeDisposable
+import java.util.concurrent.TimeUnit
+
+private const val DELAY = 2000L
 
 class CatsViewModel(
-    service: ActivitiesService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val service: ActivitiesService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context,
+    private val mainScheduler: Scheduler,
+    private val ioScheduler: Scheduler
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
+    private val compositeDisposable = CompositeDisposable()
+
     init {
-        service.getActivity().enqueue(object : Callback<ActivityResponse> {
-            override fun onResponse(call: Call<ActivityResponse>, response: Response<ActivityResponse>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
+        getOneFact(context)
+    }
+
+    private fun getOneFact(context: Context) {
+        val disposable = service.getActivity()
+            .subscribeOn(ioScheduler)
+            .observeOn(mainScheduler)
+            .subscribe(
+                { _catsLiveData.value = Success(it) },
+                {
                     _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
+                        it.message ?: context.getString(
                             R.string.default_error_text
                         )
                     )
-                }
-            }
-
-            override fun onFailure(call: Call<ActivityResponse>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+                })
+        compositeDisposable.add(disposable)
     }
 
-    fun getFacts() {}
+    fun getMoreFacts() {
+        compositeDisposable.clear()
+        val disposable =
+            Flowable.interval(DELAY, TimeUnit.MILLISECONDS)
+                .flatMap {
+                    service.getActivity()
+                        .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+                        .toFlowable()
+                }
+                .subscribeOn(ioScheduler)
+                .observeOn(mainScheduler)
+                .subscribe({
+                    _catsLiveData.value = Success(it)
+                }, {
+                    _catsLiveData.value = Error(
+                        it.message ?: context.getString(
+                            R.string.default_error_text
+                        )
+                    )
+                })
+        compositeDisposable.add(disposable)
+    }
+
+    override fun onCleared() {
+        compositeDisposable.dispose()
+        super.onCleared()
+    }
 }
 
 class CatsViewModelFactory(
     private val catsRepository: ActivitiesService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
+    private val context: Context,
+    private val mainScheduler: Scheduler,
+    private val ioScheduler: Scheduler
 ) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(catsRepository, localCatFactsGenerator, context, mainScheduler = mainScheduler, ioScheduler = ioScheduler) as T
 }
 
 sealed class Result

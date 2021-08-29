@@ -4,7 +4,6 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -14,7 +13,9 @@ class MainActivity : AppCompatActivity() {
         CatsViewModelFactory(
             diContainer.service,
             diContainer.localCatFactsGenerator(applicationContext),
-            applicationContext
+            applicationContext,
+            mainScheduler = diContainer.mainScheduler,
+            ioScheduler = diContainer.ioScheduler
         )
     }
 
@@ -28,6 +29,9 @@ class MainActivity : AppCompatActivity() {
                 is Error -> Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                 ServerError -> Snackbar.make(view, "Network error", 1000).show()
             }
+        }
+        view.setOnClickListener {
+            catsViewModel.getMoreFacts()
         }
     }
 }
