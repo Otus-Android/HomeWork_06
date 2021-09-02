@@ -5,6 +5,6 @@ import retrofit2.http.GET
 
 interface CatsService {
 
-    @GET("random?animal_type=cat")
-    fun getCatFact(): Call<Fact>
+    @GET("dogs?number=1")
+    fun getCatFact(): Call<List<Fact>>
 }

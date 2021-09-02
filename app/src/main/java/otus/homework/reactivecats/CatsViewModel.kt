@@ -19,10 +19,10 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
+        catsService.getCatFact().enqueue(object : Callback<List<Fact>> {
+            override fun onResponse(call: Call<List<Fact>>, response: Response<List<Fact>>) {
                 if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
+                    _catsLiveData.value = Success(response.body()!!.first())
                 } else {
                     _catsLiveData.value = Error(
                         response.errorBody()?.string() ?: context.getString(
@@ -32,7 +32,7 @@ class CatsViewModel(
                 }
             }
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
+            override fun onFailure(call: Call<List<Fact>>, t: Throwable) {
                 _catsLiveData.value = ServerError
             }
         })
