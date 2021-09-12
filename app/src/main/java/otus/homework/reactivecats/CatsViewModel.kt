@@ -1,44 +1,68 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Observable
+import io.reactivex.disposables.CompositeDisposable
+import retrofit2.HttpException
+import java.util.concurrent.TimeUnit
 
+@SuppressLint("StaticFieldLeak")
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+    private val compositeDisposable = CompositeDisposable()
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+    init {
+        val disposable = catsService.getCatFact()
+            .applyScheduler()
+            .subscribe(::handleSuccess, ::handleError)
+        compositeDisposable.add(disposable)
     }
 
-    fun getFacts() {}
+    private fun handleError(error: Throwable) {
+        Log.e(this::class.simpleName, "handleError: ", error)
+
+        _catsLiveData.value = when (error) {
+            is HttpException -> ServerError
+            else -> Error(
+                error.message ?: context.getString(
+                    R.string.default_error_text
+                )
+            )
+        }
+    }
+
+    private fun handleSuccess(fact: Fact) {
+        _catsLiveData.value = Success(fact)
+    }
+
+    fun getFacts() {
+        val disposable = Observable.interval(2, 2, TimeUnit.SECONDS)
+            .flatMapSingle {
+                catsService.getCatFact()
+                    .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
+            }
+            .applyScheduler()
+            .subscribe(::handleSuccess, ::handleError)
+        compositeDisposable.add(disposable)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        compositeDisposable.clear()
+    }
 }
 
 class CatsViewModelFactory(
