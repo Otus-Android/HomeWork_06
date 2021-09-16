@@ -20,6 +20,11 @@ class LocalCatFactsGenerator(
         return Single.just(Fact(catFacts[Random.nextInt(catFacts.size)]))
     }
 
+    fun generateCatFact2(): Fact {
+        val catFacts = context.resources.getStringArray(R.array.local_cat_facts)
+        return Fact(catFacts[Random.nextInt(catFacts.size)])
+    }
+
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFactPeriodically так,
      * чтобы она эмитила Fact со случайной строкой из массива строк R.array.local_cat_facts каждые 2000 миллисекунд.

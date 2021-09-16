@@ -5,9 +5,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.disposables.CompositeDisposable
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 
 class CatsViewModel(
     private val networkRepository: NetworkRepository,
@@ -24,8 +26,8 @@ class CatsViewModel(
         /**
          * choose some variant
          */
-        getOneFact()
-//        getFacts()
+//        getOneFact()
+        getFacts()
 //        generateCatFacts()
 //        generateCatFactsPeriodically()
     }
@@ -49,20 +51,20 @@ class CatsViewModel(
         compositeDisposable.add(
             Observable
                 .interval(TWO, TimeUnit.SECONDS)
+                .flatMap {
+                    networkRepository.getCatFacts().toObservable()
+                }
+//                .onErrorResumeNext(
+//                    localCatFactsGenerator.generateCatFact().toObservable()
+//                )
+                .onErrorReturn {
+                    localCatFactsGenerator.generateCatFact2()
+                }
+                .repeat()
+                .applyObservableSchedulers()
                 .subscribe {
-                    networkRepository.getCatFacts()
-                        .applySingleSchedulers()
-                        .subscribe(
-                            {
-                                if (it != null) _catsLiveData.value = Success(it)
-                                else _catsLiveData.value = Error(context.getString(R.string.default_error_text))
-                            },
-                            {
-                                localCatFactsGenerator.generateCatFact().map {
-                                    _catsLiveData.value = Success(it)
-                                }
-                            }
-                        )
+                    if (it != null) _catsLiveData.value = Success(it)
+                    else _catsLiveData.value = Error(context.getString(R.string.default_error_text))
                 }
         )
     }
@@ -79,8 +81,15 @@ class CatsViewModel(
     }
 
     private fun generateCatFactsPeriodically(){
+        val catFacts = context.resources.getStringArray(R.array.local_cat_facts)
         compositeDisposable.add(
-            localCatFactsGenerator.generateCatFactPeriodically()
+//            localCatFactsGenerator.generateCatFactPeriodically()
+            Flowable
+                .interval(2_000, TimeUnit.MILLISECONDS)
+                .flatMap {
+                    Flowable.just(Fact(catFacts[Random.nextInt(catFacts.size)]))
+                }
+                .distinctUntilChanged()
                 .applyFlowableSchedulers()
                 .subscribe(
                     { _catsLiveData.value = Success(it) },
