@@ -22,44 +22,21 @@ class CatsViewModel(
     private val compositeDisposable = CompositeDisposable()
 
     init {
-        getSingleFacts()
         getFacts()
     }
 
-    fun getSingleFacts() {
-        compositeDisposable.add(
-                catsService.getCatFact()
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(
-                                { fact ->
-                                    if (fact != null) _catsLiveData.value = Success(fact)
-                                    else _catsLiveData.value =
-                                            Error(context.getString(R.string.default_error_text))
-                                },
-                                { _catsLiveData.value = ServerError }
-                        )
-        )
-    }
-
-    fun getFacts() {
+    fun getFacts(){
         compositeDisposable.add(
                 Observable.interval(0L,2L, TimeUnit.MILLISECONDS)
-                        .subscribe {
+                        .flatMap {
                             catsService.getCatFact()
-                                    .subscribeOn(Schedulers.io())
-                                    .observeOn(AndroidSchedulers.mainThread())
-                                    .subscribe(
-                                            { fact ->
-                                                if (fact != null) _catsLiveData.value = Success(fact)
-                                                else _catsLiveData.value =
-                                                        Error(context.getString(R.string.default_error_text))
-                                            }, {
-                                        localCatFactsGenerator.generateCatFact().map {
-                                            _catsLiveData.value = Success(it)
-                                        }
-                                    }
-                                    )
+                                    .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
+                                    .toObservable()
+                        }.subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe { fact ->
+                            if (fact != null) _catsLiveData.value = Success(fact)
+                            else _catsLiveData.value = Error(context.getString(R.string.default_error_text))
                         }
         )
     }
