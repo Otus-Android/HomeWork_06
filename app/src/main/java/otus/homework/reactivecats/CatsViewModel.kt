@@ -1,5 +1,6 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -10,8 +11,10 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
+import org.reactivestreams.Subscription
 import java.util.concurrent.TimeUnit
 
+@SuppressLint("CheckResult")
 class CatsViewModel(
     private val catsService: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
@@ -26,6 +29,9 @@ class CatsViewModel(
         catsService.getCatFact()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+            .doOnSubscribe { disposable ->
+                compositeDisposable.add(disposable)
+            }
             .subscribe(
                 { fact ->
                     setFact(fact, context)
@@ -33,7 +39,7 @@ class CatsViewModel(
                 {
                     _catsLiveData.value = ServerError
                 }
-            ).addTo(compositeDisposable)
+            )
     }
 
     private fun setFact(
@@ -59,13 +65,18 @@ class CatsViewModel(
                     )
             }
             .observeOn(AndroidSchedulers.mainThread())
+            .doOnSubscribe { subscription: Subscription ->
+
+            }
             .subscribe(
                 { fact ->
                     if (fact != null) {
                         _catsLiveData.value = Success(fact)
                     }
                 },
-                { }
+                {
+                    _catsLiveData.value = ServerError
+                }
             ).addTo(compositeDisposable)
     }
 
