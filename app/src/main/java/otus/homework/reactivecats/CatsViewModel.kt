@@ -1,17 +1,24 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Flowable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
+import io.reactivex.schedulers.Schedulers
+import org.reactivestreams.Subscription
+import java.util.concurrent.TimeUnit
 
+@SuppressLint("CheckResult")
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val compositeDisposable: CompositeDisposable = CompositeDisposable(),
     context: Context
 ) : ViewModel() {
 
@@ -19,26 +26,64 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
+        catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnSubscribe { disposable ->
+                compositeDisposable.add(disposable)
+            }
+            .subscribe(
+                { fact ->
+                    setFact(fact, context)
+                },
+                {
+                    _catsLiveData.value = ServerError
                 }
-            }
-
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+            )
     }
 
-    fun getFacts() {}
+    private fun setFact(
+        fact: Fact?,
+        context: Context
+    ) {
+        if (fact != null) {
+            _catsLiveData.value = Success(fact)
+        } else {
+            _catsLiveData.value = Error(
+                context.getString(R.string.default_error_text)
+            )
+        }
+    }
+
+    fun getFacts() {
+        Flowable.interval(2000L, TimeUnit.MILLISECONDS)
+            .subscribeOn(Schedulers.io())
+            .flatMap {
+                catsService.getCatFact().toFlowable()
+                    .onErrorReturnItem(
+                        localCatFactsGenerator.generateCatFact().blockingGet()
+                    )
+            }
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnSubscribe { subscription: Subscription ->
+
+            }
+            .subscribe(
+                { fact ->
+                    if (fact != null) {
+                        _catsLiveData.value = Success(fact)
+                    }
+                },
+                {
+                    _catsLiveData.value = ServerError
+                }
+            ).addTo(compositeDisposable)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        compositeDisposable.clear()
+    }
 }
 
 class CatsViewModelFactory(
@@ -49,10 +94,17 @@ class CatsViewModelFactory(
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(
+            catsService = catsRepository,
+            localCatFactsGenerator = localCatFactsGenerator,
+            context = context
+        ) as T
 }
 
 sealed class Result
 data class Success(val fact: Fact) : Result()
 data class Error(val message: String) : Result()
 object ServerError : Result()
+
+fun Disposable.addTo(compositeDisposable: CompositeDisposable): Disposable =
+    apply { compositeDisposable.add(this) }
