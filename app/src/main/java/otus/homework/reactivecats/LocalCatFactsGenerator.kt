@@ -4,6 +4,8 @@ import android.content.Context
 import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.Single
+import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -30,8 +32,14 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success =
-            Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        val stringArray = context.resources.getStringArray(R.array.local_cat_facts)
+        return Flowable
+            .interval(2000L, TimeUnit.MILLISECONDS)
+            .flatMap {
+                Flowable.fromCallable {
+                    Fact(stringArray[Random.nextInt(0, stringArray.size)])
+                }
+            }
+            .distinctUntilChanged()
     }
 }
