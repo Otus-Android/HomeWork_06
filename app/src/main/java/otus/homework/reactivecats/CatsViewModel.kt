@@ -23,20 +23,6 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        /*
-        catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                { r -> _catsLiveData.value = Success(r) },
-                { th ->
-                    _catsLiveData.value =
-                        Error(th.message ?: context.getString(R.string.default_error_text))
-                }
-            )
-            .addTo(disposables)
-            */
-
         getFacts()
     }
 
@@ -44,16 +30,30 @@ class CatsViewModel(
         Flowable
             .interval(2000, TimeUnit.MILLISECONDS)
             .onBackpressureDrop()
-            .subscribeOn(Schedulers.io())
             .flatMapSingle {
                 catsService.getCatFact()
                     .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
             }
+            .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { r ->
                     _catsLiveData.value = Success(r)
                 },
+                { th ->
+                    _catsLiveData.value =
+                        Error(th.message ?: context.getString(R.string.default_error_text))
+                }
+            )
+            .addTo(disposables)
+    }
+
+    fun getFact() {
+        catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { r -> _catsLiveData.value = Success(r) },
                 { th ->
                     _catsLiveData.value =
                         Error(th.message ?: context.getString(R.string.default_error_text))
