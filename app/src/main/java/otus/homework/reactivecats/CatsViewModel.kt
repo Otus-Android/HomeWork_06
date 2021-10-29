@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
 class CatsViewModel(
     private val catsService: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
@@ -31,7 +31,9 @@ class CatsViewModel(
     private fun onFailure(t: Throwable) {
         when (t) {
             is SocketTimeoutException -> _catsLiveData.value = ServerError
-            else ->  _catsLiveData.value = Error(t.message ?: "Ошибка")
+            else ->  _catsLiveData.value = Error(t.message ?:  context.getString(
+                R.string.default_error_text
+            ))
         }
     }
 
