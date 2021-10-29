@@ -1,8 +1,13 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -15,7 +20,9 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
     fun generateCatFact(): Single<Fact> {
-        return Single.never()
+       return Single.just(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
+           .map { Fact(it)}
+
     }
 
     /**
@@ -25,6 +32,11 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
         val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        return Flowable.just(success)
+            .distinctUntilChanged()
+            .repeatWhen { complete ->
+                complete.delay(2000,TimeUnit.MILLISECONDS)
+            }
+
     }
 }
