@@ -1,55 +1,70 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Flowable
+import io.reactivex.Single
+import io.reactivex.disposables.Disposable
+import otus.homework.reactivecats.network.CatsService
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+	val catsService: CatsService,
+	val localCatFactsGenerator: LocalCatFactsGenerator,
+	context: Context,
+	val schedulers: ISchedulers
 ) : ViewModel() {
 
-    private val _catsLiveData = MutableLiveData<Result>()
-    val catsLiveData: LiveData<Result> = _catsLiveData
+	private val _catsLiveData = MutableLiveData<Result>()
+	val catsLiveData: LiveData<Result> = _catsLiveData
+	private var catsDisposable: Disposable? = null
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
-    }
+	init {
+		catsDisposable = getFacts()
+			.subscribe(
+				{ _catsLiveData.postValue(Success(it)) },
+				{ _catsLiveData.postValue(Error(it.message ?: "")) }
+			)
+	}
 
-    fun getFacts() {}
+
+	fun getFacts(): Flowable<Fact> {
+		val source1 = catsService.getCatFact()
+			.doOnSuccess { Log.d("лог", "получен факт из интернета - ${it.text}") }
+		val source2 = localCatFactsGenerator.generateCatFactPeriodically()
+			.doOnNext { Log.d("лог", "получен факт из локального источника - ${it.text}") }
+
+		return source1
+			.delay(2, TimeUnit.SECONDS)
+			.repeat()
+			.onErrorResumeNext(source2)
+
+
+
+	}
+
+
+	override fun onCleared() {
+		catsDisposable?.dispose()
+		super.onCleared()
+	}
 }
 
 class CatsViewModelFactory(
-    private val catsRepository: CatsService,
-    private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
+	private val catsRepository: CatsService,
+	private val localCatFactsGenerator: LocalCatFactsGenerator,
+	private val context: Context,
+	private val schedulers: ISchedulers
 ) :
-    ViewModelProvider.NewInstanceFactory() {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+	ViewModelProvider.NewInstanceFactory() {
+	@Suppress("UNCHECKED_CAST")
+	override fun <T : ViewModel?> create(modelClass: Class<T>): T =
+		CatsViewModel(catsRepository, localCatFactsGenerator, context, schedulers) as T
 }
 
 sealed class Result
