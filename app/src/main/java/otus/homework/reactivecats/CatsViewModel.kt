@@ -4,7 +4,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
 import io.reactivex.disposables.CompositeDisposable
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     catFactsRepository: CatFactsRepository,
@@ -18,7 +20,8 @@ class CatsViewModel(
     private val compositeDisposable = CompositeDisposable()
 
     init {
-        catFactsRepository.getCatFact()
+        Flowable.interval(0, REPEAT_TIME, TimeUnit.SECONDS, rxSchedulers.ioScheduler)
+            .flatMapSingle { catFactsRepository.getCatFact() }
             .subscribeOn(rxSchedulers.ioScheduler)
             .observeOn(rxSchedulers.mainThreadScheduler)
             .subscribe(
@@ -31,6 +34,10 @@ class CatsViewModel(
     override fun onCleared() {
         compositeDisposable.dispose()
         super.onCleared()
+    }
+
+    private companion object {
+        const val REPEAT_TIME = 2L
     }
 }
 
