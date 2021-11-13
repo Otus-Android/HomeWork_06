@@ -12,9 +12,10 @@ import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    context: Context,
+    private val defaultErrorText: String = context.getString(R.string.default_error_text)
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
@@ -23,39 +24,40 @@ class CatsViewModel(
     private var compositeDisposable: CompositeDisposable = CompositeDisposable()
 
     init {
-        compositeDisposable.add(
-            Flowable.interval(2, TimeUnit.SECONDS)
-                .onBackpressureDrop()
-                .subscribeOn(Schedulers.io())
-                .flatMapSingle {
-                    catsService.getCatFact()
-                        .onErrorResumeNext {
-                            localCatFactsGenerator
-                                .generateCatFact()
-                                .map {
-                                    Facts(listOf(it))
-                                }
-                        }
+        getFacts()
+    }
+
+    private fun getFacts() {
+        compositeDisposable.add(Flowable.interval(2000, TimeUnit.MILLISECONDS)
+            .onBackpressureDrop()
+            .subscribeOn(Schedulers.io())
+            .flatMapSingle {
+                catsService.getCatFact().onErrorResumeNext {
+                    localCatFactsGenerator
+                        .generateCatFact()
+                        .map { Facts(listOf(it)) }
                 }
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    { fact ->
-                        fact.facts.let {
-                            if (it.isEmpty()) {
-                                _catsLiveData.value =
-                                    Error(context.getString(R.string.default_error_text))
-                            } else {
-                                _catsLiveData.value = Success(it.first())
-                            }
+            }
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact ->
+                    fact.facts.let {
+                        if (it.isEmpty()) {
+                            _catsLiveData.value =
+                                Error(defaultErrorText)
+                        } else {
+                            _catsLiveData.value = Success(it.first())
                         }
-                    },
-                    { throwable ->
-                        _catsLiveData.value =
-                            Error(
-                                throwable.message ?: context.getString(R.string.default_error_text)
-                            )
                     }
-                ))
+                },
+                { throwable ->
+                    _catsLiveData.value =
+                        Error(
+                            throwable.message ?: defaultErrorText
+                        )
+
+                }
+            ))
     }
 
     override fun onCleared() {
