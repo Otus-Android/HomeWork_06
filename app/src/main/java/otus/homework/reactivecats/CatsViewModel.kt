@@ -6,16 +6,19 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import java.net.SocketTimeoutException
+import java.util.concurrent.TimeUnit
 
 @SuppressLint("CheckResult")
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private var disposables = CompositeDisposable()
@@ -28,21 +31,34 @@ class CatsViewModel(
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .doOnSubscribe(disposables::add)
-            .subscribe(
-                { fact ->
-                    _catsLiveData.value = Success(fact)
-                },
-                { err ->
-                    _catsLiveData.value = if (err is SocketTimeoutException) {
-                        ServerError
-                    } else {
-                        Error(err.message ?: context.getString(R.string.default_error_text))
-                    }
-                }
-            )
+            .subscribe(::onSuccess, ::onError)
     }
 
-    fun getFacts() {}
+    private fun getFacts() = Flowable
+        .interval(0, 2000, TimeUnit.MILLISECONDS)
+        .onBackpressureDrop()
+        .flatMap {
+            catsService.getCatFact().toFlowable()
+                .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toFlowable())
+        }
+        .subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(::onSuccess, ::onError)
+        .addTo(disposables)
+
+    private fun onSuccess(fact: Fact) {
+        _catsLiveData.value = Success(fact)
+    }
+
+    private fun onError(err: Throwable) {
+        _catsLiveData.value = if (err is SocketTimeoutException) {
+            ServerError
+        } else {
+            Error(err.message ?: context.getString(R.string.default_error_text))
+        }
+    }
+
+    private fun Disposable.addTo(compositeDisposable: CompositeDisposable) = compositeDisposable.add(this)
 
     override fun onCleared() {
         super.onCleared()
