@@ -10,6 +10,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import java.lang.ref.WeakReference
+import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
 
@@ -38,16 +39,27 @@ class CatsViewModel(
                         .toObservable()
                 }.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe { fact ->
+                .subscribe({ fact ->
                     if (fact != null) _catsLiveData.value = Success(fact)
-                    else _catsLiveData.value = Error(weakContext.get()?.getString(R.string.default_error_text) ?: "")
-                }
+                    else _catsLiveData.value =
+                        Error(weakContext.get()?.getString(R.string.default_error_text) ?: "")
+                },
+                    { throwable -> onError(throwable) }
+                )
         )
     }
 
     override fun onCleared() {
         super.onCleared()
         compositeDisposable.dispose()
+    }
+
+    private fun onError(t: Throwable) {
+        when (t) {
+            is SocketTimeoutException -> _catsLiveData.value = ServerError
+            else -> _catsLiveData.value =
+                Error(t.message ?: weakContext.get()?.getString(R.string.default_error_text) ?: "")
+        }
     }
 }
 
