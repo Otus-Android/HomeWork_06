@@ -5,40 +5,52 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+    private val compositeDisposable = CompositeDisposable()
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+    init {
+        compositeDisposable.add(getFacts()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    setResult(Success(it))
+                },
+                {
+                    setResult(Error(it.message ?: "Error"))
+                }
+            ))
     }
 
-    fun getFacts() {}
+    private fun getFacts() = catsService.getCatFact()
+        .delay(TIME_OUT, TimeUnit.MILLISECONDS)
+        .repeat()
+        .onErrorResumeNext(localCatFactsGenerator.generateCatFactPeriodically())
+
+    private fun setResult(result: Result) {
+        _catsLiveData.value = result
+    }
+
+    fun dispose() {
+        compositeDisposable.dispose()
+    }
+
+    companion object {
+        const val TIME_OUT: Long = 2000
+    }
 }
 
 class CatsViewModelFactory(
