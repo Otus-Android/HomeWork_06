@@ -27,6 +27,7 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> {
         return Flowable
             .interval(2000, TimeUnit.MILLISECONDS)
-            .flatMap { generateCatFact().toFlowable() }
+            .flatMapSingle { generateCatFact() }
+            .distinctUntilChanged()
     }
 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.Observable
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
@@ -23,39 +24,26 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        disposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .doOnError {
-                    _catsLiveData.value = Error(it.message ?: context.getString(R.string.default_error_text))
-                }
-                .subscribe {
-                    _catsLiveData.value = Success(it)
-                }
-        )
-        getFacts()
-
-        disposable.add(
-            localCatFactsGenerator.generateCatFactPeriodically()
-                .subscribe { println("###fact = $it") }
-        )
+        getFacts(context)
     }
 
-    private fun getFacts() {
-        disposable.add(
-            Observable.interval(2, TimeUnit.SECONDS)
-                .flatMap { catsService.getCatFact() }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .onErrorReturn {
-                    localCatFactsGenerator.generateCatFact().blockingGet()
-                }
-                .subscribe {
-                    _catsLiveData.value = Success(it)
-                }
-        )
+    private fun getFacts(context: Context) {
+        Observable.interval(0, 2, TimeUnit.SECONDS)
+            .flatMapSingle { getCatFact() }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({
+                _catsLiveData.value = Success(it)
+            }, {
+                _catsLiveData.value = Error(it.message ?: context.getString(R.string.default_error_text))
+            })
+            .also { disposable.add(it) }
     }
+
+    private fun getCatFact(): Single<Fact> =
+        catsService
+            .getCatFact()
+            .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
 
     override fun onCleared() {
         super.onCleared()
