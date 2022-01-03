@@ -25,27 +25,7 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        disposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(
-                    object : DisposableSingleObserver<Fact>() {
-
-                        override fun onSuccess(t: Fact) {
-                            _catsLiveData.value = Success(t)
-                        }
-
-                        override fun onError(e: Throwable) {
-                            _catsLiveData.value = Error(
-                                e.message ?: context.getString(
-                                    R.string.default_error_text
-                                )
-                            )
-                        }
-                    }
-                )
-        )
+        getFacts()
     }
 
     /**
@@ -58,7 +38,7 @@ class CatsViewModel(
         disposable.add(
             Observable.interval(2000L, TimeUnit.MILLISECONDS)
                 .flatMapSingle { catsService.getCatFact() }
-                .doOnError { localCatFactsGenerator.generateCatFact() }
+                .onErrorReturn { localCatFactsGenerator.generateCatFact().blockingGet() }
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(
                     object : DisposableObserver<Fact>() {
@@ -80,9 +60,7 @@ class CatsViewModel(
                 )
         )
 
-
     override fun onCleared() {
-        super.onCleared()
         disposable.dispose()
     }
 }
