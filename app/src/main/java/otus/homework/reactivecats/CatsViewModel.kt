@@ -16,6 +16,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.lang.Exception
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     catsService: CatsService,
@@ -31,31 +32,15 @@ class CatsViewModel(
     init {
         Log.i("Viewmodel", "init viewmodel")
         disposable =
-            catsService.getCatFact()
-            //.onExceptionResumeNext (localCatFactsGenerator.generateCatFact().toObservable())
-            .onExceptionResumeNext (getFacts().toObservable())
+            Observable.interval(2000, TimeUnit.MILLISECONDS)
+             .flatMap { catsService.getCatFact() }
+            .onErrorResumeNext (localCatFactsGenerator.generateCatFact())
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                {
-                    result ->
-                    val predict: Boolean = ((_catsLiveData.value !is Success)
-                            || ((_catsLiveData.value is Success)
-                            && (_catsLiveData.value as Success).fact != result))
-
-                    if(predict) _catsLiveData.value = Success(result)
-                    Log.i("Viewmodel ", "onNext")
-                },
-                { ex ->
-                    val message = ex.message ?: context.getString(R.string.default_error_text)
-                    Log.i("Viewmodel ex", message)
-                    _catsLiveData.value = Error(message)
-                }
-            )
+            .subscribe {
+                _catsLiveData.value = Success(fact = it)
+            }
     }
 
-    fun getFacts(): Flowable<Fact> {
-        return localCatFactsGenerator.generateCatFactPeriodically()
-    }
     override fun onCleared() {
         super.onCleared()
         disposable.dispose()
