@@ -6,19 +6,22 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.net.SocketTimeoutException
+import java.util.concurrent.TimeUnit
 
 @SuppressLint("CheckResult")
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private var disposables = CompositeDisposable()
@@ -27,22 +30,43 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
+//        getFact()
+        getFacts()
+    }
+
+    private fun getFact() {
         catsService.getCatFact()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .doOnSubscribe(disposables::add)
-            .subscribe({
-                _catsLiveData.value = Success(it)
-            }, {
-                _catsLiveData.value = if (it is SocketTimeoutException) {
-                    ServerError
-                } else {
-                    Error(it.message ?: context.getString(R.string.default_error_text))
-                }
-            })
+            .subscribe(this::onSuccess, this::onError)
     }
 
-    fun getFacts() {}
+    private fun getFacts() {
+        val d = Flowable.interval(0, 2, TimeUnit.SECONDS)
+            .onBackpressureLatest()
+            .flatMap { catsService.getCatFact().toFlowable() }
+            .onErrorResumeNext { _: Throwable ->
+                localCatFactsGenerator.generateCatFact().toFlowable()
+            }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .distinctUntilChanged()
+            .subscribe(this::onSuccess, this::onError)
+        disposables.add(d)
+    }
+
+    private fun onSuccess(fact: Fact) {
+        _catsLiveData.value = Success(fact)
+    }
+
+    private fun onError(ex: Throwable) {
+        _catsLiveData.value = if (ex is SocketTimeoutException) {
+            ServerError
+        } else {
+            Error(ex.message ?: context.getString(R.string.default_error_text))
+        }
+    }
 
     override fun onCleared() {
         super.onCleared()
