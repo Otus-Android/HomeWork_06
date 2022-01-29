@@ -1,6 +1,6 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
-    ext.kotlin_version = "1.4.32"
+    ext.kotlin_version = '1.5.20'
     repositories {
         google()
         jcenter()
@@ -17,11 +17,18 @@ buildscript {
 allprojects {
     repositories {
         google()
-//        maven { url "https://oss.jfrog.org/libs-snapshot" }
         jcenter()
+        maven { url "https://jitpack.io" }
+
     }
 }
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+
+ext {
+    retrofit_version = '2.9.0'
+    rxjava3_version = '3.0.0'
+
 }

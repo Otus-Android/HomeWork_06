@@ -30,4 +30,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    override  fun onStart(){
+        super.onStart()
+
+       // catsViewModel.getFacts()
+    }
 }
