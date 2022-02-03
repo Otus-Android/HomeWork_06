@@ -5,40 +5,48 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.disposables.CompositeDisposable
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
+    private val compositeDisposable = CompositeDisposable()
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
-
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+        catsService.getCatFact()
+            .observeFromIoToMain()
+            .subscribe({ fact ->
+                _catsLiveData.value = Success(fact)
+            },{ throwable ->
+                _catsLiveData.value = Error(throwable.message
+                    ?: context.getString(R.string.default_error_text))
+            }).addTo(compositeDisposable)
     }
 
-    fun getFacts() {}
+    override fun onCleared() {
+        compositeDisposable.dispose()
+    }
+
+    fun getFacts() {
+        localCatFactsGenerator.generateCatFactPeriodically()
+            .observeFromIoToMain()
+            .onErrorResumeNext { _: Throwable ->
+                localCatFactsGenerator.generateCatFact().toFlowable()
+            }
+            .subscribe({ fact ->
+                _catsLiveData.value = Success(fact)
+            }, { throwable ->
+                _catsLiveData.value = Error(
+                    throwable.message
+                        ?: context.getString(R.string.default_error_text)
+                )
+            }).addTo(compositeDisposable)
+    }
 }
 
 class CatsViewModelFactory(
