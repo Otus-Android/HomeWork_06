@@ -14,7 +14,7 @@ class MainActivity : AppCompatActivity() {
         CatsViewModelFactory(
             diContainer.service,
             diContainer.localCatFactsGenerator(applicationContext),
-            applicationContext
+            diContainer.resources(applicationContext)
         )
     }
 
@@ -22,6 +22,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
         setContentView(view)
+
         catsViewModel.catsLiveData.observe(this) { result ->
             when (result) {
                 is Success -> view.populate(result.fact)
@@ -29,5 +30,6 @@ class MainActivity : AppCompatActivity() {
                 ServerError -> Snackbar.make(view, "Network error", 1000).show()
             }
         }
+        catsViewModel.getFacts()
     }
 }
