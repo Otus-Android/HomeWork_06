@@ -1,27 +1,19 @@
 package otus.homework.reactivecats
 
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.Flowable
-import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
-import kotlinx.coroutines.Dispatchers
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import java.util.concurrent.Flow
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.MILLISECONDS
 
 class CatsViewModel(
-    val catsService: CatsService,
-    val localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
@@ -32,6 +24,7 @@ class CatsViewModel(
         disposable = getFacts()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+            .doOnError { error -> _catsLiveData.value = Error(error.localizedMessage ?: "Some error") }
             .subscribe { result ->
                 Log.d("Reactive Cats", "New fact: ${result.text}")
                 _catsLiveData.value = Success(result)
@@ -43,31 +36,20 @@ class CatsViewModel(
         disposable?.dispose()
     }
 
-    fun getFacts(): Flowable<Fact> = catsService.getCatFact()
-        .delay(2000, TimeUnit.MILLISECONDS)
-        .flatMap { response ->
-            val newFlowable: Single<Fact>
-            if (response.isSuccessful && response.body() != null) {
-                newFlowable = Single.just(response.body()!!)
-            } else {
-                newFlowable = localCatFactsGenerator.generateCatFact()
-            }
-            newFlowable
-        }
-        .doOnError { it -> Log.e("Reactive Cats", "${it.message}") }
-        .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
-        .repeat()
+    fun getFacts(): Flowable<Fact> =
+        Flowable.interval(2000, MILLISECONDS).flatMap { catsService.getCatFact().toFlowable() }
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFactPeriodically())
+            .doOnError { Log.e("Reactive Cats", "${it.message}") }
 }
 
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
-    private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
+    private val localCatFactsGenerator: LocalCatFactsGenerator
 ) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(catsRepository, localCatFactsGenerator) as T
 }
 
 sealed class Result
