@@ -5,12 +5,15 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 
 class CatsViewModel(
     catsService: CatsService,
@@ -21,6 +24,7 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
     val disposable: CompositeDisposable = CompositeDisposable()
+    val _context = context
 
     init {
         catsService.getCatFact()
@@ -41,8 +45,12 @@ class CatsViewModel(
             }
     }
 
-    fun getFacts() {
-
+    fun getFacts() : Observable<Fact> {
+        return Observable.create {
+            var facts = _context.resources.getStringArray(R.array.local_cat_facts)
+            val randomIndex = Random.nextInt(facts.size)
+            it.onNext(Fact(facts[randomIndex]))
+        }
     }
 
     override fun onCleared() {
