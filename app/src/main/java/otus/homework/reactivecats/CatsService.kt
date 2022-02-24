@@ -1,12 +1,11 @@
 package otus.homework.reactivecats
 
-import io.reactivex.Maybe
-import retrofit2.Call
+import io.reactivex.Observable
+import io.reactivex.Single
 import retrofit2.http.GET
-import java.util.*
 
 interface CatsService {
 
     @GET("random?animal_type=cat")
-    fun getCatFact(): Maybe<Fact>
+    fun getCatFact(): Single<Fact>
 }

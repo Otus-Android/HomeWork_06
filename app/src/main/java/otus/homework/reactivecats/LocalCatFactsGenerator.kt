@@ -4,6 +4,7 @@ import android.content.Context
 import io.reactivex.Flowable
 import io.reactivex.Single
 import kotlinx.coroutines.delay
+import java.util.concurrent.TimeUnit
 
 class LocalCatFactsGenerator(
     private val context: Context
@@ -26,15 +27,8 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        var prevFact = Fact("")
-        val factArray = context.resources.getStringArray(R.array.local_cat_facts)
-        return Flowable.generate {
-            val newFact = Fact(factArray.random())
-            if (prevFact.text != newFact.text) {
-                Thread.sleep(2000)
-                it.onNext(newFact)
-                prevFact = newFact
-            }
-    }
+        return generateCatFact()
+            .repeatWhen{completed -> completed.delay(2000, TimeUnit.MILLISECONDS)}
+            .distinct()
 }
 }

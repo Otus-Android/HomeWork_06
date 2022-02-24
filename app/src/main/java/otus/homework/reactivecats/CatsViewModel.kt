@@ -6,8 +6,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     private val catsService: CatsService,
@@ -17,41 +18,36 @@ class CatsViewModel(
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
-    private val container = CompositeDisposable()
+
+    private var disposable: Disposable? = null
 
     private fun getFacts() {
-
-        val offlineCatsDisposable = localCatFactsGenerator.generateCatFactPeriodically().subscribeOn(Schedulers.io())
-        val disposable = catsService.getCatFact().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).doOnError {
-            val offlineDisposable = offlineCatsDisposable.subscribe (
-                {fact ->
+        disposable = catsService.getCatFact().subscribeOn(Schedulers.io())
+            .repeatWhen { completed -> completed.delay(2, TimeUnit.SECONDS) }
+            .observeOn(AndroidSchedulers.mainThread())
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFactPeriodically())
+            .subscribe(
+                { fact ->
                     _catsLiveData.postValue(Success(fact))
-                }, { e ->
-                    _catsLiveData.postValue(Error(e.message?: context.getString(R.string.default_error_text)))
+                },
+                { e ->
+                    _catsLiveData.postValue(
+                        Error(
+                            e.message ?: context.getString(R.string.default_error_text)
+                        )
+                    )
                 }
             )
-            container.add(offlineDisposable)
-        }.subscribe(
-            { fact ->
-                _catsLiveData.postValue(Success(fact))
-            },
-            { e ->
-                _catsLiveData.postValue(Error(e.message?: context.getString(R.string.default_error_text)))
-            }
-        )
-
-        container.add(disposable)
     }
 
-    fun onActivityDestroy(){
-        container.dispose()
+    override fun onCleared() {
+        disposable?.dispose()
     }
 
     fun onActivityCreate() {
         getFacts()
     }
 }
-
 
 
 class CatsViewModelFactory(
