@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -46,11 +46,14 @@ class CatsViewModel(
     }
 
     fun getFacts() : Observable<Fact> {
-        return Observable.create {
-            var facts = _context.resources.getStringArray(R.array.local_cat_facts)
-            val randomIndex = Random.nextInt(facts.size)
-            it.onNext(Fact(facts[randomIndex]))
-        }
+        return Observable.interval(2, TimeUnit.SECONDS)
+            .flatMap {
+                catsService.getCatFact()
+                    .map {
+                        it.body()
+                    }
+                    .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
+            }
     }
 
     override fun onCleared() {
