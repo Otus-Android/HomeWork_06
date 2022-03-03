@@ -48,7 +48,7 @@ class CatsViewModel(
     fun getFacts() : Observable<Fact> {
         return Observable.interval(2, TimeUnit.SECONDS)
             .flatMap {
-                catsService.getCatFact()
+                catsService.getCatFact().toObservable()
                     .map {
                         it.body()
                     }
