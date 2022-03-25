@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.Flowable
 import io.reactivex.Observable
+import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
@@ -32,13 +33,13 @@ class CatsViewModel(
     init {
         Log.i("Viewmodel", "init viewmodel")
         disposable =
-            Observable.interval(2000, TimeUnit.MILLISECONDS)
-             .flatMap { catsService.getCatFact() }
-            .onErrorResumeNext (localCatFactsGenerator.generateCatFact())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe {
-                _catsLiveData.value = Success(fact = it)
-            }
+                localCatFactsGenerator.generateCatFactPeriodically()
+                .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe {
+                    _catsLiveData.value = Success(fact = it)
+                }
     }
 
     override fun onCleared() {

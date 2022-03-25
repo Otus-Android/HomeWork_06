@@ -18,9 +18,9 @@ class LocalCatFactsGenerator(
      * чтобы она возвращала Fact со случайной строкой  из массива строк R.array.local_cat_facts
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
-    fun generateCatFact(): Observable<Fact> {
+    fun generateCatFact(): Flowable<Fact> {
         val fact = Fact(context.resources.getStringArray(R.array.local_cat_facts).random())
-        return Observable.just(fact)
+        return Flowable.just(fact)
     }
 
     /**
@@ -29,9 +29,8 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        return Observable.interval(2000, TimeUnit.MILLISECONDS)
+        return Flowable.interval(2000, TimeUnit.MILLISECONDS)
             .flatMap{ generateCatFact()}
-            .toFlowable(BackpressureStrategy.BUFFER)
             .distinctUntilChanged()
     }
 }
