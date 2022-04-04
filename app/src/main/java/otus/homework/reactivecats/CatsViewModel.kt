@@ -48,15 +48,13 @@ class CatsViewModel(
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .flatMap {
-                catsService.getCatFact().toFlowable()
-                    .onErrorReturnItem(
-                        localCatFactsGenerator.generateCatFact().blockingGet()
-                    )
+                catsService.getCatFact().toFlowable().
+                onErrorResumeNext(localCatFactsGenerator.generateCatFact().toFlowable())
             }
             .subscribe({ result ->
                 _catsLiveData.value = Success(result)
             }, { error ->
-                error.printStackTrace()
+                Error(error.message)
             })
         compositeDisposable.add(flowable)
     }
