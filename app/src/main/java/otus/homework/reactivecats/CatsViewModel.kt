@@ -4,15 +4,16 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
-import retrofit2.Response
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator
 ) : ViewModel() {
 
     private val mCompositeDisposable = CompositeDisposable()
@@ -22,11 +23,7 @@ class CatsViewModel(
 
     init {
         mCompositeDisposable += catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .doOnError(::handleOnError)
-            .doOnNext(::handleOnNext)
-            .subscribe()
+            .subscribeToCatsObservable()
     }
 
     override fun onCleared() {
@@ -34,17 +31,26 @@ class CatsViewModel(
         mCompositeDisposable.dispose()
     }
 
-    fun getFacts() = Unit
+    fun getFacts() {
+        mCompositeDisposable += Observable.interval(2000, TimeUnit.MILLISECONDS)
+            .flatMap { catsService.getCatFact() }
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
+            .subscribeToCatsObservable()
+    }
 
-    private fun handleOnNext(response: Response<Fact>) = with(response) {
-        mCatsLiveData.value = when {
-            isSuccessful && body() != null -> Success(body()!!)
-            else -> Error(errorBody()?.string())
-        }
+    private fun Observable<Fact>.subscribeToCatsObservable() =
+        subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnError(::handleOnError)
+            .doOnNext(::handleOnNext)
+            .subscribe()
+
+    private fun handleOnNext(fact: Fact) {
+        mCatsLiveData.value = Success(fact)
     }
 
     private fun handleOnError(throwable: Throwable) {
-        mCatsLiveData.value = ServerError
+        mCatsLiveData.value = Error(throwable.message)
     }
 
     private operator fun CompositeDisposable.plusAssign(disposable: Disposable) {
