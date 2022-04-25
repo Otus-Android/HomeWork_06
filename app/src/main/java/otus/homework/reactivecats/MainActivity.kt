@@ -14,7 +14,7 @@ class MainActivity : AppCompatActivity() {
         CatsViewModelFactory(
             diContainer.service,
             diContainer.localCatFactsGenerator(applicationContext),
-            applicationContext
+            diContainer.getPrintableText(applicationContext)
         )
     }
 
