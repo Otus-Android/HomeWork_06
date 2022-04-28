@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.Single
 import io.reactivex.SingleObserver
@@ -18,6 +19,8 @@ import io.reactivex.subscribers.DisposableSubscriber
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 
 class CatsViewModel(
     catsService: CatsService,
@@ -28,84 +31,51 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
+    private val dispose = object: DisposableSubscriber<Fact>() {
 
-//
-//    val dispose = class DisposableObserver<Fact>() {
-//        override fun onSuccess(response: Fact) {
-//            _catsLiveData.value = Success(response)
-//        }
-//
-//        override fun onError(e: Throwable) {
-//            _catsLiveData.value = Error(e.message.toString())
-//        }
-//    }
+        @SuppressLint("CheckResult")
+        override fun onError(e: Throwable) {
+            localCatFactsGenerator.generateCatFact().subscribe { it -> _catsLiveData.value = Success(it) }
+        }
+
+        override fun onComplete() {
+            _catsLiveData.value = Success(Fact("That's all!!"))
+        }
+
+        override fun onNext(t: Fact?) {
+            _catsLiveData.value = t?.let { Success(it) }
+        }
+    }
 
     init {
 
-//        catsService.getCatFact()
-//            .subscribeOn(Schedulers.io())
-//            .observeOn(AndroidSchedulers.mainThread())
-//            .subscribe(dispose)
-
-        getFacts(catsService, localCatFactsGenerator)
-
-//        catsService.getCatFact().enqueue(object : Callback<Fact> {
-//            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-//                if (response.isSuccessful && response.body() != null) {
-//                    _catsLiveData.value = Success(response.body()!!)
-//                } else {
-//                    _catsLiveData.value = Error(
-//                        response.errorBody()?.string() ?: context.getString(
-//                            R.string.default_error_text
-//                        )
-//                    )
-//                }
-//            }
-//
-//            override fun onFailure(call: Call<Fact>, t: Throwable) {
-//                _catsLiveData.value = ServerError
-//            }
-//        })
-
-
+        getFacts(catsService)
 
     }
 
     override fun onCleared() {
-        //dispose.dispose()
+        dispose.dispose()
         super.onCleared()
     }
 
-    fun getFacts(
-        catsService: CatsService,
-        localCatFactsGenerator: LocalCatFactsGenerator
+    @SuppressLint("CheckResult")
+    fun getFacts(catsService: CatsService
     ) {
 
-        val dispose = object: DisposableSubscriber<Fact>() {
+        Flowable.create<Fact>( { fact ->
 
-            @SuppressLint("CheckResult")
-            override fun onError(e: Throwable) {
-                localCatFactsGenerator.generateCatFact().subscribe { it -> _catsLiveData.value = Success(it) }
-                //_catsLiveData.value = Success(.toString()) //Error(e.message.toString())
-            }
+            Flowable
+                .interval(2, TimeUnit.SECONDS)
+                .subscribe {
+                    catsService.getCatFact().subscribe(){
+                        fact.onNext(it)
+                    }
+                }
+        }, BackpressureStrategy.LATEST)
+        .subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(dispose)
 
-            override fun onComplete() {
-                _catsLiveData.value = Success(Fact("That's all!!"))
-            }
-
-            override fun onNext(t: Fact?) {
-                _catsLiveData.value = t?.let { Success(it) }
-            }
-        }
-
-//        localCatFactsGenerator
-//            .generateCatFactPeriodically()
-//            .subscribe(dispose)
-
-        val flow = catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(dispose)
     }
 }
 

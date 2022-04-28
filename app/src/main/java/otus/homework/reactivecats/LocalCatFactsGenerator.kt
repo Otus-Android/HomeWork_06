@@ -29,18 +29,25 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        //val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
+
         val flow = Flowable.create<Fact>( { fact ->
 
-            val interval = Flowable
-                .interval(2000, TimeUnit.MILLISECONDS)
-                .subscribe {
-                    val success = Fact(
-                        context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]
-                    )
-                    fact.onNext(success)
-                }
+//            val defender = Flowable
+//                .interval(2000, TimeUnit.MILLISECONDS)
+//                .subscribe {
+//                    val success = Fact(
+//                        context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]
+//                    )
+//                    fact.onNext(success)
+//                }
 
+            while(true) {
+                Thread.sleep(2000)
+                val success = Fact(
+                    context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]
+                )
+                fact.onNext(success)
+            }
         }, BackpressureStrategy.LATEST)
 
         return flow
