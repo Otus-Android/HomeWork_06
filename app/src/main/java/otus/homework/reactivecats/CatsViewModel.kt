@@ -12,6 +12,7 @@ import io.reactivex.schedulers.Schedulers
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     catsService: CatsService,
@@ -26,21 +27,28 @@ class CatsViewModel(
 
     init {
         disposable.add(catsService.getCatFact()
+            .onErrorResumeNext(LocalCatFactsGenerator(context)
+                .generateCatFactPeriodically())
+            .repeatWhen { it.delay(2, TimeUnit.SECONDS) }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({
                 _catsLiveData.value = Success(it)
             },{
-                _catsLiveData.value = ServerError
-//                _catsLiveData.value = Error(
-//                    response.errorBody()?.string() ?: context.getString(
-//                        R.string.default_error_text
-//                    )
-//                )
+                _catsLiveData.value = Error(
+                    it.message ?: context.getString(
+                        R.string.default_error_text
+                    )
+                )
             }))
     }
 
     fun getFacts() {}
+
+    override fun onCleared() {
+        super.onCleared()
+        disposable.clear()
+    }
 }
 
 class CatsViewModelFactory(
