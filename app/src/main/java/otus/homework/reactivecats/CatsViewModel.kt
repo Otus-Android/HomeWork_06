@@ -8,9 +8,10 @@ import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit.MILLISECONDS
 
 class CatsViewModel(
-    catsService: CatsService,
+    private val catsService: CatsService,
     localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
@@ -21,7 +22,13 @@ class CatsViewModel(
     private var catFactRequestSubscription: Disposable? = null
 
     init {
+        getFacts(localCatFactsGenerator, context)
+    }
+
+    private fun getFacts(localCatFactsGenerator: LocalCatFactsGenerator, context: Context) {
         catFactRequestSubscription = catsService.getCatFact()
+            .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
+            .repeatWhen { it.delay(2000, MILLISECONDS) }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
