@@ -29,5 +29,7 @@ class MainActivity : AppCompatActivity() {
                 ServerError -> Snackbar.make(view, "Network error", 1000).show()
             }
         }
+
+        catsViewModel.getFacts()
     }
 }
