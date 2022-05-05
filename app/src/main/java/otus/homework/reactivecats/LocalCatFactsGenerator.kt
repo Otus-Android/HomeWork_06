@@ -30,7 +30,6 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> {
         return generateCatFact()
             .repeatWhen { it.delay(2000, MILLISECONDS) }
-            .subscribeOn(Schedulers.io())
             .distinctUntilChanged()
     }
 }

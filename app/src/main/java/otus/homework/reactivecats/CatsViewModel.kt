@@ -27,9 +27,9 @@ class CatsViewModel(
 
     private fun getFacts(localCatFactsGenerator: LocalCatFactsGenerator, context: Context) {
         catFactRequestSubscription = catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
             .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
             .repeatWhen { it.delay(2000, MILLISECONDS) }
-            .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 {
