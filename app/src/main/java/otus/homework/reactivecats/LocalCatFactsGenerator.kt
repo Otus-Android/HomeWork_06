@@ -29,7 +29,7 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> {
         return generateCatFact()
             .repeatWhen { it.delay (2, TimeUnit.SECONDS) }
-            .distinct()
+            .distinctUntilChanged()
 
     }
 }

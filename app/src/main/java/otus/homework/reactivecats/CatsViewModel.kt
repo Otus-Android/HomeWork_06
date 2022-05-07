@@ -5,13 +5,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
@@ -27,8 +23,8 @@ class CatsViewModel(
 
     init {
         disposable.add(catsService.getCatFact()
-            .onErrorResumeNext(LocalCatFactsGenerator(context)
-                .generateCatFactPeriodically())
+            .onErrorResumeNext(localCatFactsGenerator
+                .generateCatFact())
             .repeatWhen { it.delay(2, TimeUnit.SECONDS) }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())

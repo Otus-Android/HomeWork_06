@@ -9,5 +9,5 @@ import retrofit2.http.GET
 interface CatsService {
 
     @GET("random?animal_type=cat")
-    fun getCatFact(): Flowable<Fact>
+    fun getCatFact(): Single<Fact>
 }
