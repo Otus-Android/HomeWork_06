@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
@@ -36,18 +37,16 @@ class CatsViewModel(
 
     fun getFacts() {
         compositeDisposable.add(
-            catsService.getCatFact()
+            Observable
+                .interval(2000, TimeUnit.MILLISECONDS)
+                .flatMap { catsService.getCatFact().onErrorResumeNext { localCatFactsGenerator.generateCatFact() }.toObservable() }
                 .subscribeOn(Schedulers.io())
-                .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
-                .delay(2000, TimeUnit.MILLISECONDS)
-                .repeat()
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
                     _catsLiveData.value = Success(it)
                 }, {
                     _catsLiveData.value = Error(it.message ?: context.getString(R.string.default_error_text))
-                })
-        )
+                }))
     }
 
     override fun onCleared() {
