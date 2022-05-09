@@ -6,21 +6,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import io.reactivex.BackpressureStrategy
-import io.reactivex.Flowable
-import io.reactivex.Single
-import io.reactivex.SingleObserver
+import io.reactivex.*
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.internal.operators.flowable.FlowableIgnoreElements
-import io.reactivex.observers.DisposableObserver
-import io.reactivex.observers.DisposableSingleObserver
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import io.reactivex.subscribers.DisposableSubscriber
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
 class CatsViewModel(
     catsService: CatsService,
@@ -31,50 +21,37 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    private val dispose = object: DisposableSubscriber<Fact>() {
-
-        @SuppressLint("CheckResult")
-        override fun onError(e: Throwable) {
-            localCatFactsGenerator.generateCatFact().subscribe { it -> _catsLiveData.value = Success(it) }
-        }
-
-        override fun onComplete() {
-            _catsLiveData.value = Success(Fact("That's all!!"))
-        }
-
-        override fun onNext(t: Fact?) {
-            _catsLiveData.value = t?.let { Success(it) }
-        }
-    }
-
+    private var disposables = CompositeDisposable()
     init {
-
-        getFacts(catsService)
-
+        getFacts(catsService, localCatFactsGenerator)
     }
 
     override fun onCleared() {
-        dispose.dispose()
+        disposables.dispose()
         super.onCleared()
     }
 
     @SuppressLint("CheckResult")
-    fun getFacts(catsService: CatsService
+    fun getFacts(
+        catsService: CatsService,
+        localCatFactsGenerator: LocalCatFactsGenerator
     ) {
 
-        Flowable.create<Fact>( { fact ->
-
-            Flowable
-                .interval(2, TimeUnit.SECONDS)
-                .subscribe {
-                    catsService.getCatFact().subscribe(){
-                        fact.onNext(it)
-                    }
+        val flowable = Flowable
+            .interval(2, TimeUnit.SECONDS)
+            .flatMap{ catsService.getCatFact() }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    _catsLiveData.value = Success(it)
+                },{
+                    localCatFactsGenerator.generateCatFact().subscribe {  fact ->
+                    _catsLiveData.value = Success(fact)
                 }
-        }, BackpressureStrategy.LATEST)
-        .subscribeOn(Schedulers.io())
-        .observeOn(AndroidSchedulers.mainThread())
-        .subscribe(dispose)
+                })
+
+        disposables.add(flowable)
 
     }
 }

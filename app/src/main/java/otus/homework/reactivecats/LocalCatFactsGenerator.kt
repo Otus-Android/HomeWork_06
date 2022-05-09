@@ -1,11 +1,9 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.Single
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
 class LocalCatFactsGenerator(
     private val context: Context
@@ -18,9 +16,7 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFact(): Single<Fact> {
 
-        val fact = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Single.just(fact)
-
+        return Single.fromCallable { Fact(context.resources.getStringArray(R.array.local_cat_facts).random()) }
     }
 
     /**
@@ -30,26 +26,12 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
 
-        val flow = Flowable.create<Fact>( { fact ->
-
-//            val defender = Flowable
-//                .interval(2000, TimeUnit.MILLISECONDS)
-//                .subscribe {
-//                    val success = Fact(
-//                        context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]
-//                    )
-//                    fact.onNext(success)
-//                }
-
-            while(true) {
-                Thread.sleep(2000)
-                val success = Fact(
-                    context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]
-                )
-                fact.onNext(success)
+        return Flowable
+            .interval(2000, TimeUnit.MILLISECONDS)
+            .onBackpressureLatest()
+            .map {
+                Fact(context.resources.getStringArray(R.array.local_cat_facts).random())
             }
-        }, BackpressureStrategy.LATEST)
 
-        return flow
     }
 }
