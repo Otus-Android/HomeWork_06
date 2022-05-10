@@ -42,7 +42,7 @@ class CatsViewModel(
             .flatMap{
                     catsService.getCatFact()
             }
-            .onErrorResumeNext( localCatFactsGenerator.generateCatFactPeriodically()  )
+            .onErrorResumeNext( localCatFactsGenerator.generateCatFact().toFlowable()  )
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
