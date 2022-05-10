@@ -10,10 +10,6 @@ import io.reactivex.*
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.PublishSubject
-import org.reactivestreams.Publisher
-import java.io.IOException
-import java.util.concurrent.Flow
 import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
@@ -46,7 +42,7 @@ class CatsViewModel(
             .flatMap{
                     catsService.getCatFact()
             }
-            .onErrorResumeNext( localCatFactsGenerator.generateCatFact().toFlowable() )
+            .onErrorResumeNext( localCatFactsGenerator.generateCatFactPeriodically()  )
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
