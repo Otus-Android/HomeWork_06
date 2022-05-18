@@ -10,10 +10,12 @@ import com.google.android.material.snackbar.Snackbar
 class MainActivity : AppCompatActivity() {
 
     private val diContainer = DiContainer()
+
     private val catsViewModel by viewModels<CatsViewModel> {
         CatsViewModelFactory(
             diContainer.service,
             diContainer.localCatFactsGenerator(applicationContext),
+            diContainer.disposables,
             applicationContext
         )
     }
