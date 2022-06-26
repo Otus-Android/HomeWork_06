@@ -31,6 +31,6 @@ class LocalCatFactsGenerator(
         val randomFact = Fact(factArray[Random.nextInt(5)])
         return Flowable.interval(2L, TimeUnit.SECONDS).map {
             randomFact
-        }
+        }.distinctUntilChanged()
     }
 }
