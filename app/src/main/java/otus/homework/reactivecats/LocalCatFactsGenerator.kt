@@ -1,6 +1,7 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import io.reactivex.Flowable
 import io.reactivex.Single
 import java.util.concurrent.TimeUnit
@@ -29,8 +30,8 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val fact = Fact(text = array[Random.nextInt(array.size)])
         return Flowable.interval(2000, TimeUnit.MILLISECONDS)
-            .map { fact }
+            .map { Fact(text = array[Random.nextInt(array.size)]) }
+            .distinctUntilChanged()
     }
 }

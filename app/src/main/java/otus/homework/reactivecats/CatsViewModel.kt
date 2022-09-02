@@ -4,8 +4,6 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import io.reactivex.Flowable
-import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
@@ -30,21 +28,13 @@ class CatsViewModel(
         getFacts()
     }
 
-    private fun getSingleFact(): Single<Fact> = catsService.getCatFact()
-        .subscribeOn(Schedulers.io())
-        .observeOn(AndroidSchedulers.mainThread())
-
     private fun getFacts() {
-        val catFacts = Flowable
-            .interval(2000, TimeUnit.MILLISECONDS)
-            .map {
-                getSingleFact()
-                    .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
-                    .subscribe { fact ->
-                        _catsLiveData.value = Success(fact)
-                    }
-            }
-            .subscribe()
+        val catFacts = catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
+            .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
+            .repeatWhen { completed -> completed.delay(2000, TimeUnit.MILLISECONDS) }
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe { fact -> _catsLiveData.value = Success(fact) }
         compositeDisposable.add(catFacts)
     }
 
