@@ -12,10 +12,11 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.HttpException
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel(), LifecycleObserver {
 
@@ -43,13 +44,31 @@ class CatsViewModel(
                     }
                 })
         )
+        getFacts {  }
     }
 
-    fun getFacts() {}
+    fun getFacts(onItemCollected: (Fact) -> Unit) {
+        disposables.add(
+            catsService
+                .getCatFact()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .delay(CAT_GET_FACTS_PERIOD_MILLISECONDS,TimeUnit.MILLISECONDS)
+                .repeat()
+                .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
+                .subscribe { fact ->
+                    onItemCollected(fact)
+                }
+        )
+    }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
     private fun stopObserver() {
         disposables.clear()
+    }
+
+    companion object {
+        private const val CAT_GET_FACTS_PERIOD_MILLISECONDS = 2000L
     }
 }
 

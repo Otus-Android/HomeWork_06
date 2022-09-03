@@ -40,7 +40,7 @@ class LocalCatFactsGenerator(
                 .generate<Fact?> { emitter ->
                     emitter.onNext(Fact(facts[Random.nextInt(facts.indices)]))
                 }
-                .distinct()
+                .distinctUntilChanged()
                 .debounce(CAT_GENERATION_PERIOD_MILLISECONDS, TimeUnit.MILLISECONDS)
         }
 
