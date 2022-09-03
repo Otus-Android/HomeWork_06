@@ -11,8 +11,6 @@ class LocalCatFactsGenerator(
     private val context: Context
 ) {
 
-    private val previousFact = AtomicReference<Fact>()
-
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFact так,
      * чтобы она возвращала Fact со случайной строкой  из массива строк R.array.local_cat_facts
@@ -31,10 +29,7 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> {
         return Flowable.interval(2000, TimeUnit.MILLISECONDS)
             .map { getRandomFact() }
-            .filter { fact ->
-                val previous = previousFact.getAndSet(fact)
-                !previous.equals(fact)
-            }
+            .distinctUntilChanged()
     }
 
     private fun getRandomFact(): Fact {
