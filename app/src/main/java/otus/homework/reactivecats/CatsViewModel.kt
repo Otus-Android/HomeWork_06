@@ -55,6 +55,7 @@ class CatsViewModel(
                     .onErrorReturn {
                         Success(localCatFactsGenerator.generateCatFact().blockingGet())
                     }
+                    .toObservable()
             }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
