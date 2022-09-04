@@ -28,18 +28,14 @@ class CatsViewModel(
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe (
                 { response ->
-                    if (response.isSuccessful && response.body() != null) {
-                        _catsLiveData.value = Success(response.body()!!)
-                    } else {
-                        _catsLiveData.value = Error(
-                            response.errorBody()?.string() ?: context.getString(
-                                R.string.default_error_text
-                            )
-                        )
-                    }
+                    _catsLiveData.value = Success(response)
                 },
                 {
-                    _catsLiveData.value = ServerError
+                    _catsLiveData.value = Error(
+                        it.message ?: context.getString(
+                            R.string.default_error_text
+                        )
+                    )
                 }
             )
 
@@ -54,11 +50,7 @@ class CatsViewModel(
             .flatMap {
                 catsService.getCatFact()
                     .map { response ->
-                        if (response.isSuccessful && response.body() != null) {
-                            Success(response.body()!!)
-                        } else {
-                            Success(localCatFactsGenerator.generateCatFact().blockingGet())
-                        }
+                        Success(response)
                     }
                     .onErrorReturn {
                         Success(localCatFactsGenerator.generateCatFact().blockingGet())
@@ -74,6 +66,22 @@ class CatsViewModel(
                     _catsLiveData.value = ServerError
                 }
             )
+
+        /*//Проверка метода generateCatFactPeriodically
+        val disposable = localCatFactsGenerator.generateCatFactPeriodically()
+            .map {
+                Success(it)
+            }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe (
+                { result ->
+                    _catsLiveData.value = result
+                },
+                {
+                    _catsLiveData.value = ServerError
+                }
+            )*/
 
         compositeDisposable.add(disposable)
     }
