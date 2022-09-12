@@ -31,10 +31,16 @@ class CatsViewModel(
     private fun getFacts() {
         val catFacts = catsService.getCatFact()
             .subscribeOn(Schedulers.io())
-            .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
-            .repeatWhen { completed -> completed.delay(2000, TimeUnit.MILLISECONDS) }
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe { fact -> _catsLiveData.value = Success(fact) }
+            .onErrorResumeNext {
+                _catsLiveData.value = ServerError
+                localCatFactsGenerator.generateCatFact()
+            }
+            .repeatWhen { completed -> completed.delay(2000, TimeUnit.MILLISECONDS) }
+            .subscribe(
+                { fact -> _catsLiveData.value = Success(fact) },
+                { t -> _catsLiveData.value = Error(t.message ?: "Unknown error") }
+            )
         compositeDisposable.add(catFacts)
     }
 
