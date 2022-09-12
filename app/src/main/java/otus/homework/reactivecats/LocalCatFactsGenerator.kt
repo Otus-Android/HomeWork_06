@@ -20,11 +20,9 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFact(): Single<Fact> =
         context.resources.getStringArray(R.array.local_cat_facts).let { facts ->
-            Single.defer {
-                Single.just(
-                    Fact(
-                        text = facts[Random.nextInt(facts.indices)]
-                    )
+            Single.fromCallable {
+                Fact(
+                    text = facts[Random.nextInt(facts.indices)]
                 )
             }
         }
@@ -41,7 +39,9 @@ class LocalCatFactsGenerator(
                     emitter.onNext(Fact(facts[Random.nextInt(facts.indices)]))
                 }
                 .distinctUntilChanged()
-                .debounce(CAT_GENERATION_PERIOD_MILLISECONDS, TimeUnit.MILLISECONDS)
+                .zipWith(
+                    Flowable.interval(CAT_GENERATION_PERIOD_MILLISECONDS, TimeUnit.MILLISECONDS)
+                ) { item, _ -> item }
         }
 
     companion object {

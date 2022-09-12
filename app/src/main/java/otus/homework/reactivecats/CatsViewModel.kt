@@ -1,6 +1,7 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LiveData
@@ -44,7 +45,6 @@ class CatsViewModel(
                     }
                 })
         )
-        getFacts {  }
     }
 
     fun getFacts(onItemCollected: (Fact) -> Unit) {
@@ -53,22 +53,28 @@ class CatsViewModel(
                 .getCatFact()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .delay(CAT_GET_FACTS_PERIOD_MILLISECONDS,TimeUnit.MILLISECONDS)
+                .delay(CAT_GET_FACTS_PERIOD_MILLISECONDS, TimeUnit.MILLISECONDS)
                 .repeat()
                 .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
-                .subscribe { fact ->
-                    onItemCollected(fact)
-                }
+                .subscribe(
+                    { fact ->
+                        onItemCollected(fact)
+                    }, { error ->
+                        Log.e(CAT_VIEW_MODEL_LOG_LABEL, error.message ?: CAT_VIEW_MODEL_LOG_DEFAULT_MSG)
+                    }
+                )
         )
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-    private fun stopObserver() {
+    override fun onCleared() {
+        super.onCleared()
         disposables.clear()
     }
 
     companion object {
         private const val CAT_GET_FACTS_PERIOD_MILLISECONDS = 2000L
+        private const val CAT_VIEW_MODEL_LOG_LABEL = "CAT_VIEW_MODEL"
+        private const val CAT_VIEW_MODEL_LOG_DEFAULT_MSG = "getCatFact() - Error occurred"
     }
 }
 
