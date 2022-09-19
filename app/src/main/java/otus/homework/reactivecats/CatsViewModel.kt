@@ -5,14 +5,18 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
+
+private const val PERIOD: Long = 2000L
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
@@ -38,9 +42,16 @@ class CatsViewModel(
             }
         })*/
 
+        getFacts()
+    }
+
+    private fun getFacts() {
         disposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
+            Flowable.interval(PERIOD, TimeUnit.MILLISECONDS, Schedulers.io())
+                .flatMapSingle {
+                    catsService.getCatFact()
+                        .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+                }
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     { _catsLiveData.value = Success(it) },
@@ -50,8 +61,6 @@ class CatsViewModel(
                     }
                 ))
     }
-
-    fun getFacts() {}
 
     override fun onCleared() {
         super.onCleared()
@@ -66,7 +75,7 @@ class CatsViewModelFactory(
 ) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T =
+    override fun <T : ViewModel> create(modelClass: Class<T>): T =
         CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
 }
 
