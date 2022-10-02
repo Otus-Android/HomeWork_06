@@ -7,8 +7,6 @@ import retrofit2.http.GET
 interface CatsService {
 
     @GET("random?animal_type=cat")
-    fun getCatFactReactive(): Single<Fact>
+    fun getCatFact(): Single<Fact>
 
-    @GET("random?animal_type=cat")
-    fun getCatFact(): Call<Fact>
 }
