@@ -23,38 +23,24 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        disposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    { _catsLiveData.value = Success(it) },
-                    {
-                        _catsLiveData.value =
-                            Error(it.message ?: context.getString(R.string.default_error_text))
-                    }
-                ))
+        disposable.add(getFacts())
     }
 
-    fun getFacts() {
-        disposable.add(
-            Flowable.interval(2, TimeUnit.SECONDS)
-                .subscribeOn(Schedulers.io())
-                .flatMapSingle {
-                    catsService.getCatFact()
-                        .onErrorResumeNext {
-                            localCatFactsGenerator.generateCatFact()
-                        }
+    private fun getFacts() = Flowable.interval(2, TimeUnit.SECONDS)
+        .subscribeOn(Schedulers.io())
+        .flatMapSingle {
+            catsService.getCatFact()
+                .onErrorResumeNext {
+                    localCatFactsGenerator.generateCatFact()
                 }
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({
-                    _catsLiveData.value = Success(it)
-                }, {
-                    _catsLiveData.value =
-                        Error(it.message ?: context.getString(R.string.default_error_text))
-                })
-        )
-    }
+        }
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe({
+            _catsLiveData.value = Success(it)
+        }, {
+            _catsLiveData.value =
+                Error(it.message ?: context.getString(R.string.default_error_text))
+        })
 
     override fun onCleared() {
         super.onCleared()
