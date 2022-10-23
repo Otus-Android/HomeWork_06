@@ -14,7 +14,7 @@ class MainActivity : AppCompatActivity() {
         CatsViewModelFactory(
             diContainer.service,
             diContainer.localCatFactsGenerator(applicationContext),
-            applicationContext
+            application
         )
     }
 
@@ -22,11 +22,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
         setContentView(view)
-        catsViewModel.catsLiveData.observe(this) { result ->
+        catsViewModel.catsLiveDataReactiveStream.observe(this) { result ->
             when (result) {
                 is Success -> view.populate(result.fact)
                 is Error -> Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
-                ServerError -> Snackbar.make(view, "Network error", 1000).show()
+                ServerError -> Snackbar.make(view, "Network error", 3000).show()
             }
         }
     }
