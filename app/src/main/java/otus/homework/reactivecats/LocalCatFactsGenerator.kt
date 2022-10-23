@@ -2,20 +2,22 @@ package otus.homework.reactivecats
 
 import android.content.Context
 import io.reactivex.Flowable
-import io.reactivex.Single
-import kotlin.random.Random
+import io.reactivex.Observable
+import java.util.concurrent.TimeUnit
 
 class LocalCatFactsGenerator(
-    private val context: Context
+    context: Context
 ) {
+
+    private val items = context.resources.getStringArray(R.array.local_cat_facts)
 
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFact так,
      * чтобы она возвращала Fact со случайной строкой  из массива строк R.array.local_cat_facts
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
-    fun generateCatFact(): Single<Fact> {
-        return Single.never()
+    fun generateCatFact(): Observable<Fact> {
+        return Observable.just(Fact(text = items.random()))
     }
 
     /**
@@ -24,7 +26,9 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        return Flowable
+            .interval(2000, TimeUnit.MILLISECONDS)
+            .map { Fact(text = items.random()) }
+            .distinct()
     }
 }
