@@ -2,11 +2,11 @@ package otus.homework.reactivecats
 
 import android.content.Context
 import android.util.Log
-import io.reactivex.*
+import io.reactivex.Flowable
+import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.random.Random
 
 private const val TAG = "LocalCatFactsGenerator"
 
@@ -30,10 +30,11 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
         val flowable: Flowable<Fact>
-        flowable = Flowable.interval(0, Constants.PERIODIC_TIMEOUT_MS, TimeUnit.MILLISECONDS).map { counter ->
+        flowable = Flowable.interval(0, Constants.PERIODIC_TIMEOUT_MS, TimeUnit.MILLISECONDS, Schedulers.io())
+            .map { counter ->
             Log.d(TAG, "Generator of facts called in thread: ${Thread.currentThread().name}, count: $counter")
             getRandomFactFromResource()
-        }.distinctUntilChanged()
+        }.distinctUntilChanged().onBackpressureDrop()
         return flowable
     }
 
