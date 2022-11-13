@@ -5,40 +5,61 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.schedulers.Schedulers
+import io.reactivex.rxjava3.subscribers.DisposableSubscriber
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
+    private val subscriber: DisposableSubscriber<Fact>
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
-
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+        subscriber = getFacts()
     }
 
-    fun getFacts() {}
+    override fun onCleared() {
+        super.onCleared()
+        subscriber.dispose()
+    }
+
+    fun getFacts(): DisposableSubscriber<Fact> =
+        Flowable.interval(2, TimeUnit.SECONDS).flatMapSingle({
+            catsService.getCatFact()
+        }, false, 1).onErrorResumeWith(localCatFactsGenerator.generateCatFactPeriodically())
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeWith(getCatObserver())
+
+    private fun getCatObserver(): DisposableSubscriber<Fact> =
+        object : DisposableSubscriber<Fact>() {
+            override fun onNext(t: Fact) {
+                _catsLiveData.value = Success(t)
+                request(1)
+
+            }
+
+            override fun onError(e: Throwable) {
+                _catsLiveData.value = ServerError
+            }
+
+            override fun onComplete() {
+                _catsLiveData.value = Success(Fact("Complete"))
+            }
+
+            override fun onStart() {
+                request(1)
+            }
+
+        }
+
 }
 
 class CatsViewModelFactory(
