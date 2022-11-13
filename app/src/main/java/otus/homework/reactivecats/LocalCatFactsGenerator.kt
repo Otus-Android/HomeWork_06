@@ -1,7 +1,6 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.Single
 import java.util.concurrent.TimeUnit
@@ -24,19 +23,9 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        var previousFact = Fact("")
-        return Flowable.create<Fact>(
-            { emitter ->
-                getRandomFact().let {
-                    if (it != previousFact) {
-                        previousFact = it
-                        emitter.onNext(it)
-                    }
-                }
-                emitter.onComplete()
-            },
-            BackpressureStrategy.LATEST
-        ).delay(2, TimeUnit.SECONDS).repeat()
+        return Flowable.interval(2, TimeUnit.SECONDS)
+            .map { getRandomFact() }
+            .distinct()
     }
 
 

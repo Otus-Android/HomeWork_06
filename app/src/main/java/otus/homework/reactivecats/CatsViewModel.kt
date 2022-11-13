@@ -30,10 +30,11 @@ class CatsViewModel(
             getFacts()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .doOnError { _catsLiveData.value = Error(it.toString()) }
-                .subscribe { _catsLiveData.value = Success(it) }
+                .subscribe(
+                    { fact -> _catsLiveData.value = Success(fact) },
+                    { error -> _catsLiveData.value = Error(error.toString()) }
+                )
         )
-
     }
 
     fun getT(): Single<Fact> = Single.error(IOException())
