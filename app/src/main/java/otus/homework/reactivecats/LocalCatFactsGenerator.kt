@@ -1,8 +1,11 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.Single
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -15,7 +18,10 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
     fun generateCatFact(): Single<Fact> {
-        return Single.never()
+        return Observable
+            .fromArray(context.resources.getStringArray(R.array.local_cat_facts))
+            .map { facts -> Fact(facts[Random.nextInt()]) }
+            .singleOrError()
     }
 
     /**
@@ -24,7 +30,14 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        var safeSuccess: Fact? = null
+
+        return Observable.zip(
+            Observable.fromCallable { Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]) },
+            Observable.interval(2000, TimeUnit.MILLISECONDS)
+        ) { fact, _ -> fact }
+            .doOnNext { if (safeSuccess == it) return@doOnNext }
+            .doAfterNext { safeSuccess = it }
+            .toFlowable(BackpressureStrategy.BUFFER)
     }
 }
