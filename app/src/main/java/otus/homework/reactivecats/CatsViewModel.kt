@@ -12,8 +12,8 @@ import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -22,7 +22,7 @@ class CatsViewModel(
     private val compositeDisposable = CompositeDisposable()
 
     init {
-        compositeDisposable += catsService.getCatFact()
+        /*compositeDisposable += catsService.getCatFact()
             .filter { fact -> fact.text.isNotBlank() }
             .repeatWhen { obj -> obj.delay(2, TimeUnit.SECONDS) }
             .subscribeOn(Schedulers.io())
@@ -44,7 +44,9 @@ class CatsViewModel(
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { response -> onResponse(response) },
-                { ex -> onFailure(ex) })
+                { ex -> onFailure(ex) })*/
+
+        getFacts()
 
     }
 
@@ -56,8 +58,17 @@ class CatsViewModel(
         _catsLiveData.value = Success(response)
     }
 
-    fun getFacts() {
-        TODO()
+    private fun getFacts() {
+        compositeDisposable += catsService.getCatFact()
+            .filter { fact -> fact.text.isNotBlank() }
+            .repeatWhen { obj -> obj.delay(2, TimeUnit.SECONDS) }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
+            .subscribe(
+                { response -> onResponse(response) },
+                { ex -> onFailure(ex) }
+            )
     }
 
     override fun onCleared() {
