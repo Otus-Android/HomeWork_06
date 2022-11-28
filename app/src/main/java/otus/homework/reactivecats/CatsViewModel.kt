@@ -1,17 +1,20 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
+import java.net.SocketTimeoutException
+import java.util.concurrent.TimeUnit
 
+@SuppressLint("CheckResult")
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -19,26 +22,29 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
-
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+        getFacts()
     }
 
-    fun getFacts() {}
+    fun getFacts() {
+
+        catsService
+            .getCatFact()
+            .repeatWhen { it.delay(2000, TimeUnit.MILLISECONDS) }
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeOn(Schedulers.io())
+            .subscribe(
+                { response ->
+                    _catsLiveData.value = Success(response)
+                },
+                { error ->
+                    when (error) {
+                        is SocketTimeoutException -> _catsLiveData.value = ServerError
+                        else -> _catsLiveData.value = Error(error.message.orEmpty())
+                    }
+                }
+            )
+    }
 }
 
 class CatsViewModelFactory(
