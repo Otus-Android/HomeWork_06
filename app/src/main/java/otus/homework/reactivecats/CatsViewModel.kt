@@ -1,15 +1,14 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.Observable
-import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
 
@@ -24,44 +23,36 @@ class CatsViewModel(
     private val compositeDisposable = CompositeDisposable()
 
     init {
-       getFacts(context)
+       getFacts()
     }
 
-    fun getFacts(context: Context) {
-
+    fun getFacts() {
         val observable = Observable.interval(2, TimeUnit.SECONDS)
             .subscribeOn(Schedulers.io())
             .flatMap { catsService.getCatFact() }
             .doOnError {
                 generateCatFactWhileError()
-//                _catsLiveData.postValue(ServerError)
             }
             .retry()
+            .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { fact ->
-                    _catsLiveData.postValue(Success(fact))
+                    _catsLiveData.value = Success(fact)
                 }, {
                     generateCatFactWhileError()
-                })
-
+                }
+            )
 
         compositeDisposable.add(observable)
     }
 
+    @SuppressLint("CheckResult")
     fun generateCatFactWhileError() {
         localCatFactsGenerator.generateCatFact()
             .subscribeOn(AndroidSchedulers.mainThread())
-            .subscribe(object: SingleObserver<Fact> {
-
-                override fun onSubscribe(d: Disposable) {
-                }
-
-                override fun onSuccess(fact: Fact) {
-                    _catsLiveData.postValue(Success(fact))
-                }
-                override fun onError(e: Throwable) {
-                }
-            })
+            .subscribe { fact ->
+                _catsLiveData.value = Success(fact)
+            }
     }
 
     override fun onCleared() {
