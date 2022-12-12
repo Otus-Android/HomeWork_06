@@ -29,17 +29,12 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
         val catFactsArray = context.resources.getStringArray(R.array.local_cat_facts)
-        var lastEmittedString = ""
         val flowable = Flowable.create(
             FlowableOnSubscribe<Fact> { emitter ->
-                val randomFact = catFactsArray[Random.nextInt(catFactsArray.size)]
-                if (randomFact != lastEmittedString) {
-                    emitter.onNext(Fact(randomFact))
-                    lastEmittedString = randomFact
-                }
+                catFactsArray[Random.nextInt(catFactsArray.size)]
                 Thread.sleep(2000L)
             }, BackpressureStrategy.LATEST
-        )
+        ).distinct()
         return flowable
     }
 }
