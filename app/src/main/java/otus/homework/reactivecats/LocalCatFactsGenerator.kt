@@ -36,8 +36,7 @@ class LocalCatFactsGenerator(
             Observable.fromCallable { Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]) },
             Observable.interval(2000, TimeUnit.MILLISECONDS)
         ) { fact, _ -> fact }
-            .doOnNext { if (safeSuccess == it) return@doOnNext }
-            .doAfterNext { safeSuccess = it }
+            .distinct()
             .toFlowable(BackpressureStrategy.BUFFER)
     }
 }

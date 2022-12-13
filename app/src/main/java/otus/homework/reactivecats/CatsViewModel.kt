@@ -37,7 +37,8 @@ class CatsViewModel(
         )
     }
 
-    fun clear() {
+    override fun onCleared() {
+        super.onCleared()
         disposable.clear()
     }
 
