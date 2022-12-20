@@ -1,7 +1,6 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -45,9 +44,9 @@ class CatsViewModel(
             catsService.getCatFact()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
+                .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
                 .delay(2000, TimeUnit.MILLISECONDS)
                 .repeat()
-                .doOnError { localCatFactsGenerator.generateCatFact() }
                 .subscribe { fact -> _catsLiveData.postValue(Success(fact!!)) }
         )
     }
