@@ -24,7 +24,7 @@ class CatsViewModel(
     }
 
     private fun getFacts() {
-        val disposable = Flowable.interval(0L, 2L, TimeUnit.SECONDS)
+        compositeDisposable.add(Flowable.interval(0L, 2L, TimeUnit.SECONDS)
             .subscribeOn(Schedulers.io())
             .flatMapSingle {
                 catsService.getCatFact()
@@ -42,8 +42,7 @@ class CatsViewModel(
             }, {
                 _catsLiveData.value = it.message?.let { message -> ResultError(message) }
             })
-
-        compositeDisposable.add(disposable)
+            )
     }
 
     override fun onCleared() {
