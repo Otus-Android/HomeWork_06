@@ -1,29 +1,38 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.Disposable
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    private val disposables: MutableList<Disposable> = mutableListOf()
+    private val disposables = CompositeDisposable()
 
     init {
+        getFacts()
+    }
+
+    private fun getFacts() {
         val disposable = catsService.getCatFact()
             .subscribeOn(Schedulers.io())
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+            .delay(2000L, TimeUnit.MILLISECONDS)
+            .repeat()
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { fact ->
@@ -31,8 +40,10 @@ class CatsViewModel(
                 },
                 { throwable ->
                     if (throwable is IOException) {
+                        Log.e("CatsViewModel", "Что-то не так с интернетом", throwable)
                         _catsLiveData.value = ServerError
                     } else {
+                        Log.e("CatsViewModel", "Что-то пошло не так", throwable)
                         _catsLiveData.value = Error(
                             throwable.message ?: context.getString(
                                 R.string.default_error_text
@@ -43,8 +54,6 @@ class CatsViewModel(
             )
         disposables.add(disposable)
     }
-
-    fun getFacts() {}
 
     override fun onCleared() {
         disposables.clear()
