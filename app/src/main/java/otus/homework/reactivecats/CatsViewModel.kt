@@ -6,39 +6,62 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.Disposable
-import io.reactivex.disposables.Disposables
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    private var subscription: Disposable = Disposables.empty()
+    private var subscriptions: CompositeDisposable = CompositeDisposable()
 
     init {
-        subscription = catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                { _catsLiveData.value = Success(it) },
-                {
-                    val message = it.message ?: context.getString(R.string.default_error_text)
-                    _catsLiveData.value = Error(message)
-                }
+        subscriptions.add(
+            catsService.getCatFact()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { _catsLiveData.value = Success(it) },
+                    {
+                        val message = it.message ?: context.getString(R.string.default_error_text)
+                        _catsLiveData.value = Error(message)
+                    }
             )
+        )
+        getFacts()
     }
 
-    fun getFacts() {}
+    fun getFacts() {
+        subscriptions.add(
+            catsService.getCatFact()
+                .subscribeOn(Schedulers.io())
+                .delay(2000L, TimeUnit.MILLISECONDS)
+                .repeat()
+                .onExceptionResumeNext {
+                    localCatFactsGenerator.generateCatFact()
+                }
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    {
+                        _catsLiveData.value = Success(it)
+                    },
+                    {
+                        val message = it.message ?: context.getString(R.string.default_error_text)
+                        _catsLiveData.value = Error(message)
+                    }
+                )
+        )
+    }
 
     override fun onCleared() {
         super.onCleared()
-        subscription.dispose()
+        subscriptions.clear()
     }
 }
 
