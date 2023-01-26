@@ -5,9 +5,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.Disposable
+import io.reactivex.schedulers.Schedulers
+import java.io.IOException
 
 class CatsViewModel(
     catsService: CatsService,
@@ -18,27 +19,37 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+    private val disposables: MutableList<Disposable> = mutableListOf()
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+    init {
+        val disposable = catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact ->
+                    _catsLiveData.value = Success(fact)
+                },
+                { throwable ->
+                    if (throwable is IOException) {
+                        _catsLiveData.value = ServerError
+                    } else {
+                        _catsLiveData.value = Error(
+                            throwable.message ?: context.getString(
+                                R.string.default_error_text
+                            )
+                        )
+                    }
+                }
+            )
+        disposables.add(disposable)
     }
 
     fun getFacts() {}
+
+    override fun onCleared() {
+        disposables.clear()
+        super.onCleared()
+    }
 }
 
 class CatsViewModelFactory(
