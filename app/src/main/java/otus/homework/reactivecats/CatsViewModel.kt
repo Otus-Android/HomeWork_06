@@ -1,6 +1,5 @@
 package otus.homework.reactivecats
 
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -15,7 +14,7 @@ import java.util.concurrent.TimeUnit
 class CatsViewModel(
     private val catsService: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
+    private val resourceRepository: ResourceRepository,
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
@@ -30,7 +29,7 @@ class CatsViewModel(
     private fun getFacts() {
         val disposable = catsService.getCatFact()
             .subscribeOn(Schedulers.io())
-            .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact(R.array.local_cat_facts))
             .delay(2000L, TimeUnit.MILLISECONDS)
             .repeat()
             .observeOn(AndroidSchedulers.mainThread())
@@ -45,7 +44,7 @@ class CatsViewModel(
                     } else {
                         Log.e("CatsViewModel", "Что-то пошло не так", throwable)
                         _catsLiveData.value = Error(
-                            throwable.message ?: context.getString(
+                            throwable.message ?: resourceRepository.getString(
                                 R.string.default_error_text
                             )
                         )
@@ -64,12 +63,12 @@ class CatsViewModel(
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
+    private val resourceRepository: ResourceRepository
 ) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(catsRepository, localCatFactsGenerator, resourceRepository) as T
 }
 
 sealed class Result
