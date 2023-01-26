@@ -3,11 +3,16 @@ package otus.homework.reactivecats
 import android.content.Context
 import io.reactivex.Flowable
 import io.reactivex.Single
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
-    private val context: Context
+    context: Context
 ) {
+
+    private val facts = context.resources.getStringArray(R.array.local_cat_facts)
+
+    private fun internalGenerateCatFact() = Fact(facts[Random.nextInt(facts.size)])
 
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFact так,
@@ -15,7 +20,7 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
     fun generateCatFact(): Single<Fact> {
-        return Single.never()
+        return Single.just(internalGenerateCatFact())
     }
 
     /**
@@ -24,7 +29,9 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        return Flowable.fromCallable { internalGenerateCatFact() }
+            .delay(2000L, TimeUnit.MILLISECONDS)
+            .distinctUntilChanged()
+            .repeat()
     }
 }
