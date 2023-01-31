@@ -19,7 +19,7 @@ class CatsViewModel(
     private val compositeDisposable = CompositeDisposable()
 
     init {
-        compositeDisposable.add(
+        /*compositeDisposable.add(
             catsService.getCatFact()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -56,10 +56,28 @@ class CatsViewModel(
                     {
                         _catsLiveData.value = it.parseException()
                     })
-        )
+        )*/
+        getFacts()
     }
 
-    private fun getFacts() {}
+    private fun getFacts() {
+        compositeDisposable.add(
+            catsService.getCatFact()
+                .subscribeOn(Schedulers.io())
+                .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+                .delay(2, TimeUnit.SECONDS)
+                .repeat()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    {
+                        _catsLiveData.value = Success(it)
+                    },
+                    {
+                        _catsLiveData.value = it.parseException()
+                    }
+                )
+        )
+    }
 
     override fun onCleared() {
         compositeDisposable.dispose()
