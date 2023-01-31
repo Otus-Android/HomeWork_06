@@ -5,37 +5,33 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.Disposable
+import io.reactivex.rxjava3.schedulers.Schedulers
+
 
 class CatsViewModel(
     catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+//    localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
-    private val _catsLiveData = MutableLiveData<Result>()
+    private var _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
+    var mySubsribe: Disposable
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+        val retro = DiContainer().service.getCatFact()
+        mySubsribe = retro.subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ _catsLiveData.value = Result.Success(it) },
+                { _catsLiveData.value = Result.Error(it.message.toString()) }
+            )
+    }
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+    override fun onCleared() {
+        super.onCleared()
+        mySubsribe.dispose()
     }
 
     fun getFacts() {}
@@ -43,16 +39,21 @@ class CatsViewModel(
 
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
-    private val localCatFactsGenerator: LocalCatFactsGenerator,
+//    private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
 ) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(
+            catsRepository,
+//            localCatFactsGenerator,
+            context
+        ) as T
 }
 
-sealed class Result
-data class Success(val fact: Fact) : Result()
-data class Error(val message: String) : Result()
-object ServerError : Result()
+sealed class Result {
+    data class Success(val fact: Fact) : Result()
+    data class Error(val message: String) : Result()
+    object ServerError : Result()
+}

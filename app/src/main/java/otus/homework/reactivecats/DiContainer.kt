@@ -2,6 +2,8 @@ package otus.homework.reactivecats
 
 import android.content.Context
 import retrofit2.Retrofit
+import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
+
 import retrofit2.converter.gson.GsonConverterFactory
 
 class DiContainer {
@@ -10,6 +12,7 @@ class DiContainer {
         Retrofit.Builder()
             .baseUrl("https://cat-fact.herokuapp.com/facts/")
             .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
             .build()
     }
 
