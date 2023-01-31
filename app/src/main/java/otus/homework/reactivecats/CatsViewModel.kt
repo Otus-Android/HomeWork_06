@@ -45,7 +45,23 @@ class CatsViewModel(
             localCatFactsGenerator.generateCatFact()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .delay(2, TimeUnit.SECONDS)
+                .delay(1, TimeUnit.SECONDS)
+                .subscribe({
+                    _catsLiveData.postValue(Success(it))
+                },
+                    {
+                        _catsLiveData.value = Error(
+                            it.message ?: context.getString(
+                                R.string.default_error_text
+                            )
+                        )
+                    })
+        )
+
+        compositeDisposable.add(
+            localCatFactsGenerator.generateCatFactPeriodically()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
                     _catsLiveData.postValue(Success(it))
                 },
