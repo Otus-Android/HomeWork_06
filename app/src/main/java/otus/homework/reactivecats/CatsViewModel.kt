@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     catsService: CatsService,
@@ -38,6 +39,23 @@ class CatsViewModel(
                         )
                     }
                 )
+        )
+
+        compositeDisposable.add(
+            localCatFactsGenerator.generateCatFact()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .delay(2, TimeUnit.SECONDS)
+                .subscribe({
+                    _catsLiveData.postValue(Success(it))
+                },
+                    {
+                        _catsLiveData.value = Error(
+                            it.message ?: context.getString(
+                                R.string.default_error_text
+                            )
+                        )
+                    })
         )
     }
 
