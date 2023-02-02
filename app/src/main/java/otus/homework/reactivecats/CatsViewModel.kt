@@ -12,7 +12,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 
 class CatsViewModel(
     catsService: CatsService,
-//    localCatFactsGenerator: LocalCatFactsGenerator,
+    localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -21,12 +21,16 @@ class CatsViewModel(
     var mySubsribe: Disposable
 
     init {
-        val retro = DiContainer().service.getCatFact()
+        val retro =
+//            DiContainer().service.getCatFact()
+        localCatFactsGenerator.generateCatFact()
         mySubsribe = retro.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ _catsLiveData.value = Result.Success(it) },
                 { _catsLiveData.value = Result.Error(it.message.toString()) }
             )
+        localCatFactsGenerator.generateCatFact()
+
     }
 
     override fun onCleared() {
@@ -39,7 +43,7 @@ class CatsViewModel(
 
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
-//    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
 ) :
     ViewModelProvider.NewInstanceFactory() {
@@ -47,7 +51,7 @@ class CatsViewModelFactory(
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
         CatsViewModel(
             catsRepository,
-//            localCatFactsGenerator,
+            localCatFactsGenerator,
             context
         ) as T
 }

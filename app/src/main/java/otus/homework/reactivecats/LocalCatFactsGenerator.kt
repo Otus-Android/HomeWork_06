@@ -1,8 +1,7 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-//import io.reactivex.Flowable
-//import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -14,9 +13,11 @@ class LocalCatFactsGenerator(
 //     * чтобы она возвращала Fact со случайной строкой  из массива строк R.array.local_cat_facts
 //     * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
 //     */
-//    fun generateCatFact(): Single<Fact> {
-//        return Single.never()
-//    }
+    private val myArray = context.resources.getStringArray(R.array.local_cat_facts)
+
+    fun generateCatFact(): Single<Fact> {
+        val rand = (0 until myArray.size).random()
+        return Single.just(Fact(myArray[rand]))}
 //
 //    /**
 //     * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFactPeriodically так,

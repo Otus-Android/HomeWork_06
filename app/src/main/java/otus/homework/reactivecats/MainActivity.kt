@@ -11,7 +11,7 @@ class MainActivity : AppCompatActivity() {
     private val catsViewModel by viewModels<CatsViewModel> {
         CatsViewModelFactory(
             diContainer.service,
-//            diContainer.localCatFactsGenerator(applicationContext),
+            diContainer.localCatFactsGenerator(applicationContext),
             applicationContext
         )
     }
