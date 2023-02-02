@@ -23,14 +23,13 @@ class CatsViewModel(
     init {
         val retro =
 //            DiContainer().service.getCatFact()
-        localCatFactsGenerator.generateCatFact()
+//        localCatFactsGenerator.generateCatFact()
+          localCatFactsGenerator.generateCatFactPeriodically()
         mySubsribe = retro.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ _catsLiveData.value = Result.Success(it) },
                 { _catsLiveData.value = Result.Error(it.message.toString()) }
             )
-        localCatFactsGenerator.generateCatFact()
-
     }
 
     override fun onCleared() {
