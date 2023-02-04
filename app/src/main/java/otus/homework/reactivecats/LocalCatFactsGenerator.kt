@@ -2,7 +2,7 @@ package otus.homework.reactivecats
 
 import android.content.Context
 import io.reactivex.*
-import java.lang.Thread.sleep
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -25,18 +25,11 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        return Flowable.create<Fact?>({ emitter: FlowableEmitter<Fact?> ->
-            var lastFact = Fact("")
-
-            while (true) {
-                val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(6)])
-                if (lastFact != success)
-                    emitter.onNext(success)
-                else
-                    continue
-                lastFact = success
-                sleep(2000)
-            }
-        }, BackpressureStrategy.BUFFER)
+        return Flowable.fromCallable {
+            Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(6)])
+        }
+            .delay(2000, TimeUnit.MILLISECONDS)
+            .repeat()
+            .distinctUntilChanged()
     }
 }

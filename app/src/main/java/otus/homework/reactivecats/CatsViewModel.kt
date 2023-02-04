@@ -1,12 +1,15 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
@@ -23,17 +26,18 @@ class CatsViewModel(
         compositeDisposable.add(
             catsService.getCatFact()
                 .subscribeOn(Schedulers.io())
-                .doOnNext {
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
                     emitLD(Success(it))
-                }
-                .doOnError {
-                    emitLD(Error(it.message))
-                }
-                .onExceptionResumeNext {
-                    emitLD(ServerError)
-                }
-                .subscribe()
+                }, {
+                    if (it is IOException)
+                        emitLD(ServerError)
+                    else
+                        emitLD(Error(it.message))
+                })
         )
+
+      //  getFacts()
     }
 
     override fun onCleared() {
@@ -42,29 +46,30 @@ class CatsViewModel(
     }
 
     private fun emitLD(result: Result) {
-        _catsLiveData.postValue(result)
+        _catsLiveData.value = result
     }
 
+    @SuppressLint("CheckResult")
     private fun getFacts() {
         compositeDisposable.add(
             Observable.interval(2000, TimeUnit.MILLISECONDS)
-                .doOnNext {
+                .subscribe {
                     catsService.getCatFact()
                         .subscribeOn(Schedulers.io())
-                        .doOnNext {
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe({
                             emitLD(Success(it))
-                        }
-                        .onExceptionResumeNext {
+                        }, {
                             localCatFactsGenerator.generateCatFact()
                                 .subscribeOn(Schedulers.io())
-                                .doOnSuccess {
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe({
                                     emitLD(Success(it))
-                                }
-                                .subscribe()
-                        }
-                        .subscribe()
+                                }, {
+                                    emitLD(Error(it.message))
+                                })
+                        })
                 }
-                .subscribe()
         )
     }
 }
