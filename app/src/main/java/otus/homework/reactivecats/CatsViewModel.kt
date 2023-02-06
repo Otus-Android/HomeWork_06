@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
@@ -14,8 +15,8 @@ import retrofit2.HttpException
 import java.net.SocketTimeoutException
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
 ) : ViewModel() {
 
@@ -40,7 +41,6 @@ class CatsViewModel(
             ).also { compositeDisposable.add(it) }
     }
 
-    fun getFacts() {}
 
     private fun Throwable.isServerError(): Boolean {
         return this is SocketTimeoutException || this is HttpException
@@ -54,7 +54,13 @@ class CatsViewModel(
         super.onCleared()
         compositeDisposable.clear()
     }
+
+    fun getFact(): Single<Fact> {
+        return localCatFactsGenerator.generateCatFact()
+    }
 }
+
+
 
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
