@@ -22,12 +22,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
         setContentView(view)
-        catsViewModel.catsLiveData.observe(this) { result ->
-            when (result) {
-                is Success -> view.populate(result.fact)
-                is Error -> Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
-                ServerError -> Snackbar.make(view, "Network error", 1000).show()
+        lifecycleScope.launchWhenStarted {
+            catsViewModel.catsFlow.collect{ result ->
+                when (result) {
+                    is Success -> view.populate(result.fact)
+                    is Error -> Toast.makeText(this@MainActivity, result.message, Toast.LENGTH_LONG).show()
+                    ServerError -> Snackbar.make(view, "Network error", 1000).show()
+                }
             }
         }
     }
+
 }
