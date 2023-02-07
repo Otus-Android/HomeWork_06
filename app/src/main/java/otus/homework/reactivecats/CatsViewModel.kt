@@ -6,8 +6,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 @SuppressLint("CheckResult")
 class CatsViewModel(
@@ -20,13 +23,19 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
     private var disposable = CompositeDisposable()
 
+    companion object {
+        private const val INITIAL_DELAY = 0L
+        private const val PERIOD = 2000L
+    }
+
     init {
-        val factDisposable = catsService.getCatFact()
-            .subscribeOn(io.reactivex.schedulers.Schedulers.io())
-            .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                {
+        val factDisposable =
+            Observable.interval(INITIAL_DELAY, PERIOD, TimeUnit.MILLISECONDS)
+                .flatMapSingle { catsService.getCatFact() }
+                .subscribeOn(Schedulers.io())
+                .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
                     _catsLiveData.value = Success(it)
                 }, {
                     _catsLiveData.value = Error(
@@ -34,8 +43,8 @@ class CatsViewModel(
                             R.string.default_error_text
                         )
                     )
-                }
-            )
+                })
+
         disposable.add(factDisposable)
     }
 
