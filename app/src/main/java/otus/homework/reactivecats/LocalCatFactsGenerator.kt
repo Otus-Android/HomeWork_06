@@ -17,6 +17,7 @@ class LocalCatFactsGenerator(
 
     fun generateCatFact(): Flowable<Fact> {
         val rand = (0 until factMessages.size).random()
+        System.out.println("generateCatFact ${Fact(factMessages[rand])}")
         return Flowable.just(Fact(factMessages[rand]))}
 //
 //    /**
@@ -25,6 +26,7 @@ class LocalCatFactsGenerator(
 //     * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
 //     */
     fun generateCatFactPeriodically(): Flowable<Fact> {
+    System.out.println("generateCatFactPeriodically")
         return  Flowable.interval(2000, TimeUnit.MILLISECONDS)
                         .flatMap { generateCatFact()}
                         .distinctUntilChanged()
