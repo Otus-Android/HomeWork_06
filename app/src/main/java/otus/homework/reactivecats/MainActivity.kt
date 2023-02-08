@@ -2,8 +2,10 @@ package otus.homework.reactivecats
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.Button
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.core.view.get
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 
@@ -22,6 +24,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
         setContentView(view)
+
+        view.findViewById<Button>(R.id.showRandomFactButton).setOnClickListener {
+            catsViewModel.getRandom()
+        }
+
+        view.findViewById<Button>(R.id.showRandomPeriodicallyButton).setOnClickListener {
+            catsViewModel.getRandomPeriodically()
+        }
+
+        view.findViewById<Button>(R.id.showFactButton).setOnClickListener {
+            catsViewModel.getFacts()
+        }
+
         catsViewModel.catsLiveData.observe(this) { result ->
             when (result) {
                 is Success -> view.populate(result.fact)
