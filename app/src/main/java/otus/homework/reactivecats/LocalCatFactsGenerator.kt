@@ -3,7 +3,7 @@ package otus.homework.reactivecats
 import android.content.Context
 import io.reactivex.Observable
 import io.reactivex.Single
-import io.reactivex.subjects.BehaviorSubject
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -28,11 +28,9 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFactPeriodically(): Observable<Fact> {
         val facts = context.resources.getStringArray(R.array.local_cat_facts)
-        return BehaviorSubject.generate<Fact?> {
-            val fact = facts[Random.nextInt(facts.size)]
-            it.onNext(Fact(fact))
-            Thread.sleep(2000)
-        }
+        return Observable.fromCallable { Fact(facts[Random.nextInt(facts.size)]) }
+            .delay(2000, TimeUnit.MILLISECONDS)
+            .repeat()
             .distinctUntilChanged()
     }
 }
