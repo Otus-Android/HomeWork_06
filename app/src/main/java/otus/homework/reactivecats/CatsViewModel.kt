@@ -49,27 +49,19 @@ class CatsViewModel(
         _catsLiveData.value = result
     }
 
-    @SuppressLint("CheckResult")
     private fun getFacts() {
         compositeDisposable.add(
-            Observable.interval(2000, TimeUnit.MILLISECONDS)
-                .subscribe {
-                    catsService.getCatFact()
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe({
-                            emitLD(Success(it))
-                        }, {
-                            localCatFactsGenerator.generateCatFact()
-                                .subscribeOn(Schedulers.io())
-                                .observeOn(AndroidSchedulers.mainThread())
-                                .subscribe({
-                                    emitLD(Success(it))
-                                }, {
-                                    emitLD(Error(it.message))
-                                })
-                        })
-                }
+            catsService.getCatFact()
+                .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+                .delay(2000L, TimeUnit.MILLISECONDS)
+                .repeat()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+                    emitLD(Success(it))
+                }, {
+                    emitLD(Error(it.message))
+                })
         )
     }
 }
