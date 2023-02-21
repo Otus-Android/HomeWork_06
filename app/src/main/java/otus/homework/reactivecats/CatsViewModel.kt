@@ -13,30 +13,24 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 
 
 class CatsViewModel(
-//    catsService: CatsService,
-//    locFlow: LocalCatFactsGenerator,
+    catsService: CatsService,
     context: Context
 ) : ViewModel() {
 
     companion object {
-        val TIME_REQUEST = 2000L       //ms
-        val WAIT_RESPONSE = 240L       //ms
+        private const val TIME_REQUEST = 2000L       //ms
+        private const val WAIT_RESPONSE = 240L       //ms
     }
 
     private var _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
-    lateinit var myDispose: Disposable
+    var myDispose: Disposable
     val locFlow = LocalCatFactsGenerator(context)
     val timeOut = TIME_REQUEST + WAIT_RESPONSE
 
     init {
-        val myDispose =
-// 1.-2.  DiContainer().service.getCatFact()
-// 3.     localCatFactsGenerator.generateCatFact()
-//  4.    localCatFactsGenerator.generateCatFactPeriodically()
-            /*5 */   getFacts()
-
-        myDispose.subscribeOn(Schedulers.io())
+        myDispose = getFacts(catsService)
+            .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ _catsLiveData.value = Result.Success(it) },
                 { _catsLiveData.value = Result.Error(it.message.toString()) }
@@ -49,18 +43,12 @@ class CatsViewModel(
 
     }
 
-    fun getFacts(): Flowable<Fact> {
+    fun getFacts(catsService: CatsService): Flowable<Fact> {
 
-        return DiContainer().service.getCatFact()
+        return catsService.getCatFact()
             .delay(TIME_REQUEST, MILLISECONDS)
             .timeout(timeOut, MILLISECONDS, locFlow.generateCatFact())
             .repeat()
-
-//        Второй вариант (без экспериментов с WAIT_RESPONSE)
-//        return      Flowable.interval( TIME_REQUEST,  MILLISECONDS )
-//            .flatMap { DiContainer().service.getCatFact()
-//                .onErrorResumeNext { locFlow.generateCatFact() }
-//            }
     }
 }
 
@@ -72,11 +60,7 @@ class CatsViewModelFactory(
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(
-//            catsRepository,
-//            locFlow,
-            context
-        ) as T
+        CatsViewModel(DiContainer().service, context ) as T
 }
 
 sealed class Result {

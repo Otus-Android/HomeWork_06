@@ -25,7 +25,6 @@ class MainActivity : AppCompatActivity() {
                 is Result.Success -> view.populate(result.fact)
                 is Result.Error -> Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                 Result.ServerError -> Toast.makeText(this, "Network error",  Toast.LENGTH_LONG).show()
-                else -> Toast.makeText(this, "Unknown error",  Toast.LENGTH_LONG).show()
             }
         }
     }
