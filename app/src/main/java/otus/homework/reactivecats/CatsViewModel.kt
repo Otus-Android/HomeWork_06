@@ -11,9 +11,7 @@ import io.reactivex.schedulers.Schedulers
 import java.net.SocketTimeoutException
 
 class CatsViewModel(
-    private val catsService: CatsService,
-    private val localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsRepository: CatsRepository
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
@@ -25,19 +23,20 @@ class CatsViewModel(
         getFacts()
     }
 
-    fun getFacts() {
-        val catsSubscription = localCatFactsGenerator.generateCatFactPeriodically()
+    private fun getFacts() {
+        val catsSubscription = catsRepository.getFact()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { fact -> _catsLiveData.value = Success(fact) },
                 { error ->
                     when (error) {
-                        is SocketTimeoutException ->_catsLiveData.value = ServerError
+                        is SocketTimeoutException -> _catsLiveData.value = ServerError
                         else -> _catsLiveData.value = Error(error.message ?: "")
                     }
                 }
             )
+
 
         subscriptions.addAll(catsSubscription)
     }
@@ -49,14 +48,12 @@ class CatsViewModel(
 }
 
 class CatsViewModelFactory(
-    private val catsRepository: CatsService,
-    private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
+    private val catsRepository: CatsRepository
 ) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(catsRepository) as T
 }
 
 sealed class Result

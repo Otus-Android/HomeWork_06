@@ -18,4 +18,7 @@ class DiContainer {
     val service by lazy { retrofit.create(CatsService::class.java) }
 
     fun localCatFactsGenerator(context: Context) = LocalCatFactsGenerator(context)
+
+    fun getCatsRepository(catsService: CatsService, localCatFactsGenerator: LocalCatFactsGenerator) =
+        CatsRepositoryImpl(catsService, localCatFactsGenerator)
 }
