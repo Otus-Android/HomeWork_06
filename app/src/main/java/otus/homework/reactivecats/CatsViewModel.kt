@@ -12,7 +12,7 @@ import java.net.SocketTimeoutException
 
 class CatsViewModel(
     private val catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -26,7 +26,7 @@ class CatsViewModel(
     }
 
     fun getFacts() {
-        val catsSubscription = catsService.getCatFact()
+        val catsSubscription = localCatFactsGenerator.generateCatFactPeriodically()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
