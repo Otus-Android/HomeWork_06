@@ -1,8 +1,7 @@
 package otus.homework.reactivecats
 
-import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
-import java.lang.Thread.sleep
+import java.util.concurrent.TimeUnit
 
 class CatsRepositoryImpl(
     private val catsService: CatsService,
@@ -13,20 +12,12 @@ class CatsRepositoryImpl(
         const val SLEEP_MS = 2000L
     }
 
-    override fun getFactFromNetwork(): Flowable<Fact> {
-        return Flowable
-            .create<Fact>(
-                {
-                    while (true) {
-                        val success = catsService.getCatFact()
-                        it.onNext(success)
-                        sleep(SLEEP_MS)
-                    }
-                },
-                BackpressureStrategy.BUFFER
-            )
-            .distinctUntilChanged()
-    }
+override fun getFactFromNetwork(): Flowable<Fact> {
+    return Flowable
+        .interval(SLEEP_MS, TimeUnit.MILLISECONDS)
+        .map { catsService.getCatFact() }
+        .distinctUntilChanged()
+}
 
     override fun getFact(): Flowable<Fact> {
         return getFactFromNetwork().onErrorResumeNext(localCatFactsGenerator.generateCatFactPeriodically())
