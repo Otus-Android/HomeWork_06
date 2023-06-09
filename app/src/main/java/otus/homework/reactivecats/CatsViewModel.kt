@@ -17,21 +17,24 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    private var disposable: Disposable = catsService.getCatFact()
-        .subscribeOn(Schedulers.io())
-        .observeOn(AndroidSchedulers.mainThread())
-        .subscribe(
-            { fact ->
-                _catsLiveData.value = Success(fact)
-            },
-            { exc ->
-                _catsLiveData.value = Error(exc.message.toString())
-
-            },
-        )
+    private lateinit var disposable: Disposable
 
 
-    fun getFacts() {}
+    fun getFacts() {
+        disposable = catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact ->
+                    _catsLiveData.value = Success(fact)
+                },
+                { exc ->
+                    _catsLiveData.value = Error(exc.message.toString())
+
+                },
+            )
+        R.array.local_cat_facts
+    }
 
     override fun onCleared() {
         super.onCleared()
