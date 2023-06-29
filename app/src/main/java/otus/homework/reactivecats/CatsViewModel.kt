@@ -58,14 +58,8 @@ class CatsViewModel(
 
 class CatsViewModelFactory(
     private val catsRepository: CatsRepository
-) :
-    ViewModelProvider.NewInstanceFactory() {
+) : ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
         CatsViewModel(catsRepository) as T
 }
-
-sealed class Result
-data class Success(val fact: Fact) : Result()
-data class Error(val message: String?) : Result()
-object ServerError : Result()

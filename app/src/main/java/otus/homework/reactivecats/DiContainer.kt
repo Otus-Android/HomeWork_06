@@ -19,5 +19,6 @@ class DiContainer {
 
     fun repository(context: Context) = CatsRepositoryImpl(service, localCatFactsGenerator(context))
 
-    fun localCatFactsGenerator(context: Context) = LocalCatFactsGenerator(context)
+    private fun localCatFactsGenerator(context: Context) = LocalCatFactsGenerator(context)
+
 }

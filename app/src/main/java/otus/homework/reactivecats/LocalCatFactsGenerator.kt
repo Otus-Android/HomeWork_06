@@ -32,4 +32,5 @@ class LocalCatFactsGenerator(
             .map { Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]) }
             .distinctUntilChanged()
     }
+
 }
