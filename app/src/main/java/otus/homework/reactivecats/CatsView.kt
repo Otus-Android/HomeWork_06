@@ -16,8 +16,3 @@ class CatsView @JvmOverloads constructor(
     }
 
 }
-
-interface ICatsView {
-
-    fun populate(fact: Fact)
-}
