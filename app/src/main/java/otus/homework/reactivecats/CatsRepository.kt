@@ -1,11 +1,9 @@
 package otus.homework.reactivecats
 
 import io.reactivex.Single
-import retrofit2.http.GET
 
-interface CatsService {
+interface CatsRepository {
 
-    @GET("random?animal_type=cat")
     fun getCatFact(): Single<Fact>
 
 }
