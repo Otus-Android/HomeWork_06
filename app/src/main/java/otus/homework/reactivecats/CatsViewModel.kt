@@ -5,17 +5,16 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import io.reactivex.Single
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
-import retrofit2.Response
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    @Suppress("StaticFieldLeak") private val context: Context
 ) : ViewModel() {
 
     private val compositeDisposable = CompositeDisposable()
@@ -24,24 +23,7 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        compositeDisposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    onSuccess = { fact ->
-                        _catsLiveData.value = Success(fact)
-                    },
-                    onError = { error ->
-                        _catsLiveData.value = Error(
-                            error ?: context.getString(R.string.default_error_text)
-                        )
-                    },
-                    onFailure = {
-                        _catsLiveData.value = ServerError
-                    }
-                )
-        )
+        getFacts()
     }
 
     override fun onCleared() {
@@ -49,26 +31,28 @@ class CatsViewModel(
         compositeDisposable.dispose()
     }
 
-    fun getFacts() {}
-
-    private fun <T, R : Response<T>> Single<R>.subscribe(
-        onSuccess: (T) -> Unit,
-        onError: (String?) -> Unit,
-        onFailure: (Throwable) -> Unit
-    ): Disposable {
-        return subscribe(
-            { response ->
-                val responseBody = response.body()
-
-                if (response.isSuccessful && responseBody != null) {
-                    onSuccess(responseBody)
-                } else {
-                    onError(response.errorBody()?.string())
-                }
-            },
-            { throwable ->
-                onFailure(throwable)
-            }
+    fun getFacts() {
+        // .onErrorResumeNext(localCatFactsGenerator.generateCatFactPeriodically()) можно заменить на
+        // .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toFlowable()) как по заданию.
+        // Но использование generateCatFactPeriodically делает поведение в случае ошибки похожим на поход в сеть
+        compositeDisposable.add(
+            Flowable
+                .interval(2, TimeUnit.SECONDS)
+                .flatMapSingle { catsService.getCatFact() }
+                .onErrorResumeNext(localCatFactsGenerator.generateCatFactPeriodically())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { fact ->
+                        _catsLiveData.value = Success(fact)
+                    },
+                    { throwable ->
+                        _catsLiveData.value =
+                            Error(
+                                throwable.message ?: context.getString(R.string.default_error_text)
+                            )
+                    }
+                )
         )
     }
 }
