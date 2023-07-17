@@ -10,6 +10,9 @@ import otus.homework.reactivecats.LocalCatFactsGenerator
 import otus.homework.reactivecats.utils.Result
 import otus.homework.reactivecats.utils.Result.Error
 import otus.homework.reactivecats.utils.Result.Success
+import io.reactivex.Flowable
+import io.reactivex.disposables.Disposable
+import java.util.concurrent.TimeUnit.SECONDS
 
 class CatsViewModel(
     catsService: CatsService,
@@ -18,19 +21,24 @@ class CatsViewModel(
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
+    private var disposable: Disposable? = null
 
     init {
         getFacts(catsService = catsService)
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        disposable?.dispose()
+    }
     private fun getFacts(catsService: CatsService) {
-
-        catsService.getCatFact()
+        disposable = Flowable
+            .interval(2,SECONDS)
+            .flatMapSingle { catsService.getCatFact() }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .doOnSuccess { _catsLiveData.value =  Success(fact = it) }
+            .doOnNext { _catsLiveData.value =  Success(fact = it) }
             .doOnError { _catsLiveData.value = Error(message = it.toString()) }
-            .doOnDispose { this.onCleared() }
             .subscribe()
     }
 }
