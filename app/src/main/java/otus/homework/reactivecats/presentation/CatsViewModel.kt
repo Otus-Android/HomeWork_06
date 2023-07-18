@@ -24,21 +24,29 @@ class CatsViewModel(
     private var disposable: Disposable? = null
 
     init {
-        getFacts(catsService = catsService)
+        getFacts(catsService = catsService, localCatFactsGenerator = localCatFactsGenerator)
     }
 
     override fun onCleared() {
         super.onCleared()
         disposable?.dispose()
     }
-    private fun getFacts(catsService: CatsService) {
+
+    private fun getFacts(catsService: CatsService, localCatFactsGenerator: LocalCatFactsGenerator) {
+
         disposable = Flowable
-            .interval(2,SECONDS)
+            .interval(2, SECONDS)
             .flatMapSingle { catsService.getCatFact() }
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toFlowable())
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .doOnNext { _catsLiveData.value =  Success(fact = it) }
-            .doOnError { _catsLiveData.value = Error(message = it.toString()) }
-            .subscribe()
+            .subscribe(
+                { fact ->
+                    _catsLiveData.value = Success(fact = fact)
+                },
+                { error ->
+                    _catsLiveData.value = Error(message = error.message.toString())
+                }
+            )
     }
 }
