@@ -15,7 +15,11 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
     fun generateCatFact(): Single<Fact> {
-        return Single.never()
+        return Single.fromCallable {
+            val arrayOfCatFacts = context.resources.getStringArray(R.array.local_cat_facts)
+            val randomFact = arrayOfCatFacts[Random.nextInt(arrayOfCatFacts.size)]
+            Fact(randomFact)
+        }
     }
 
     /**
