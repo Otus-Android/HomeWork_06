@@ -36,7 +36,6 @@ class CatsViewModel(
             .flatMap { catsService.getCatFact().toFlowable()}
             .onErrorResumeNext{_:Throwable -> localCatFactsGenerator.generateCatFact().toFlowable()}
             .subscribeOn(Schedulers.io())
-            .repeatWhen { it.delay(2000, TimeUnit.MILLISECONDS) }
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 {fact -> _catsLiveData.value = Result.Success(fact)},
