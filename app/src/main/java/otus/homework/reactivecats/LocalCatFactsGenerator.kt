@@ -4,7 +4,6 @@ import android.content.Context
 import io.reactivex.Flowable
 import io.reactivex.Single
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
 class LocalCatFactsGenerator(
     private val context: Context
