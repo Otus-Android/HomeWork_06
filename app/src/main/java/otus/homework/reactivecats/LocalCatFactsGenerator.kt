@@ -7,9 +7,7 @@ import io.reactivex.Single
 import java.lang.Thread.sleep
 import kotlin.random.Random
 
-class LocalCatFactsGenerator(
-    private val context: Context
-) {
+class LocalCatFactsGenerator(private val context: Context) {
 
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFact так,

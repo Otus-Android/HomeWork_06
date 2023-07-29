@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -15,6 +14,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import otus.homework.reactivecats.Result.Error
+import otus.homework.reactivecats.Result.Success
+import otus.homework.reactivecats.Result.ServerError
 
 class CatsViewModel(
     private val repository: CatsRepository,
@@ -40,7 +42,7 @@ class CatsViewModel(
         }
     }
 
-    fun getFacts() {
+    private fun getFacts() {
         repository.getFacts()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
@@ -84,18 +86,3 @@ class CatsViewModel(
         refreshJob = null
     }
 }
-
-class CatsViewModelFactory(
-    private val catsRepository: CatsRepository,
-    private val context: Context
-) :
-    ViewModelProvider.NewInstanceFactory() {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, context) as T
-}
-
-sealed class Result
-data class Success(val fact: Fact) : Result()
-data class Error(val message: String) : Result()
-object ServerError : Result()

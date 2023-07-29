@@ -4,17 +4,16 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
+import otus.homework.reactivecats.Result.Error
+import otus.homework.reactivecats.Result.Success
+import otus.homework.reactivecats.Result.ServerError
 
 class MainActivity : AppCompatActivity() {
 
-    private val diContainer = DiContainer()
+    private val diContainer = DiContainer(this)
     private val catsViewModel by viewModels<CatsViewModel> {
-        CatsViewModelFactory(
-            CatsRepository(diContainer.service, diContainer.localCatFactsGenerator(this)),
-            applicationContext
-        )
+        CatsViewModelFactory(diContainer.repository, applicationContext)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
