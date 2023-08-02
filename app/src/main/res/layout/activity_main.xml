@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<otus.homework.reactivecats.CatsView xmlns:android="http://schemas.android.com/apk/res/android"
+<otus.homework.reactivecats.presentation.CatsView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+    android:padding="@dimen/standard_padding"
     tools:context=".MainActivity">
 
     <TextView
@@ -12,10 +12,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="@color/black"
-        android:textSize="24sp"
+        android:textSize="@dimen/standard_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-</otus.homework.reactivecats.CatsView>
+</otus.homework.reactivecats.presentation.CatsView>
