@@ -13,7 +13,8 @@ class DiContainer {
             .build()
     }
 
-    val service by lazy { retrofit.create(CatsService::class.java) }
+    val service: CatsService by lazy { retrofit.create(CatsService::class.java) }
 
     fun localCatFactsGenerator(context: Context) = LocalCatFactsGenerator(context)
 }
+
