@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 class CatsViewModel(
     private val catsService: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    val context: Context
 ) : ViewModel() {
 
     private val disposable = CompositeDisposable()
@@ -42,11 +42,20 @@ class CatsViewModel(
         disposable.add(
             catsService.getCatFact()
                 .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
                 .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
                 .delay(2, TimeUnit.SECONDS)
                 .repeat()
-                .subscribe { fact -> _catsLiveData.value = Success(fact) }
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { fact ->
+                        _catsLiveData.value = Success(fact)
+                    },
+                    { throwable ->
+                        _catsLiveData.value = Error(
+                            throwable.message ?: context.getString(R.string.default_error_text)
+                        )
+                    }
+                )
         )
     }
 
@@ -56,14 +65,14 @@ class CatsViewModel(
     }
 }
 
+@Suppress("UNCHECKED_CAST")
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
 ) :
     ViewModelProvider.NewInstanceFactory() {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T =
+    override fun <T : ViewModel> create(modelClass: Class<T>): T =
         CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
 }
 
