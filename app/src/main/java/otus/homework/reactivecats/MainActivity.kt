@@ -4,7 +4,6 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -22,6 +21,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
         setContentView(view)
+        //*
         catsViewModel.catsLiveData.observe(this) { result ->
             when (result) {
                 is Success -> view.populate(result.fact)
@@ -29,5 +29,18 @@ class MainActivity : AppCompatActivity() {
                 ServerError -> Snackbar.make(view, "Network error", 1000).show()
             }
         }
+        // */
+        //LocalCatFactsGenerator(this)
+        //    .generateCatFact()
+        //    .subscribe { it ->  view.populate(it) }
+
+        //LocalCatFactsGenerator(this)
+        //    .generateCatFactPeriodically()
+        //    .subscribe{it ->  view.populate(it)}
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        catsViewModel.catsLiveData.removeObservers(this)
     }
 }
