@@ -1,16 +1,17 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
+import io.reactivex.Observable
+import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 
 class CatsViewModel(
@@ -22,52 +23,50 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
     private val disposables = CompositeDisposable()
+    private var disposable: Disposable? = null
 
     private fun handleSuccess(fact: Fact) {
-        _catsLiveData.postValue(Success(fact))
+        _catsLiveData.value = Success(fact)
         disposables.clear()
     }
 
-    private fun handleNetError(t: Throwable) {
-        disposables.add(localCatFactsGenerator
-            .generateCatFact()
-            .subscribe (
-                this::handleSuccess,
-                this::handleError
-            )
-        )
-    }
-
     private fun handleError(t: Throwable) {
-        _catsLiveData.postValue(Error(t.message.toString()))
+        _catsLiveData.value = Error(t.message.toString())
         disposables.clear()
     }
 
     override fun onCleared() {
         super.onCleared()
         disposables.clear()
+        disposable?.dispose()
     }
 
     init {
-        viewModelScope.launch {
-            while (true) {
-                delay(2000)
-                getFacts()
-            }
-        }
+        disposable = (
+            Observable.interval(0, 2, TimeUnit.SECONDS)
+                .subscribe { getFacts() }
+        )
     }
 
     fun getFacts() {
         disposables.add(
             catsService.getCatFact()
-                //.observeOn(AndroidSchedulers.mainThread()) // postValue is thread-safe
                 .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .onErrorReturnItem(Fact(""))
+                .flatMap {
+                    if (it.text == "") {
+                        localCatFactsGenerator.generateCatFact()
+                    }
+                    else {
+                        Single.fromCallable{it}
+                    }
+                }
                 .subscribe(
-                    this::handleSuccess,
-                    this::handleNetError)
+                    ::handleSuccess,
+                    ::handleError
+                )
         )
-        Log.d("***[", "disposables.size=${disposables.size()}")
-
     }
 }
 

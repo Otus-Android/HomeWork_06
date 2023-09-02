@@ -38,9 +38,4 @@ class MainActivity : AppCompatActivity() {
         //    .generateCatFactPeriodically()
         //    .subscribe{it ->  view.populate(it)}
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        catsViewModel.catsLiveData.removeObservers(this)
-    }
 }
