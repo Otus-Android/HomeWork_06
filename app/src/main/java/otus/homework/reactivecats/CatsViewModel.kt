@@ -45,11 +45,18 @@ class CatsViewModelFactory(
     private val catsRepository: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
-) :
-    ViewModelProvider.NewInstanceFactory() {
+) : ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return when (modelClass) {
+            CatsViewModel::class.java -> {
+                CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+            }
+            else -> {
+                error("unknown $modelClass")
+            }
+        }
+    }
 }
 
 sealed class Result
