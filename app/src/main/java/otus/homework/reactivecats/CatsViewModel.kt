@@ -10,8 +10,8 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
 ) : ViewModel() {
 
     private val disposables = CompositeDisposable()
@@ -19,24 +19,7 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        disposables.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    { response ->
-                        if (response.isSuccessful && response.body() != null) {
-                            _catsLiveData.value = Success(response.body()!!)
-                        } else {
-                            _catsLiveData.value = response.errorBody()?.string()?.let {
-                                Error.Message(it)
-                            } ?: Error.ResId(R.string.default_error_text)
-                        }
-
-                    },
-                    { _catsLiveData.value = ServerError }
-                )
-        )
+        getFacts()
     }
 
     override fun onCleared() {
@@ -44,7 +27,22 @@ class CatsViewModel(
         disposables.dispose()
     }
 
-    fun getFacts() {}
+    fun getFacts() {
+        val disposable = catsService.getCatFact()
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .repeat(DELAY_BETWEEN_FETCH_FACT)
+            .subscribe(
+                { _catsLiveData.value = Success(it) },
+                { _catsLiveData.value = ServerError }
+            )
+        disposables.add(disposable)
+    }
+
+    companion object {
+        private const val DELAY_BETWEEN_FETCH_FACT = 2000L
+    }
 }
 
 class CatsViewModelFactory(
