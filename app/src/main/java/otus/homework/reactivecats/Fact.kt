@@ -1,8 +1,10 @@
 package otus.homework.reactivecats
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class Fact(
-    @field:SerializedName("text")
+    @SerialName("fact")
     val text: String
 )
