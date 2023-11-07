@@ -5,6 +5,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -39,17 +41,17 @@ class CatsViewModel(
     }
 
     fun getFacts() {}
-}
 
-class CatsViewModelFactory(
-    private val catsRepository: CatsService,
-    private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
-) :
-    ViewModelProvider.NewInstanceFactory() {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+    companion object {
+        val factory: (CatsService, LocalCatFactsGenerator, Context) -> ViewModelProvider.Factory =
+            { catsRepository, localCatFactsGenerator, context ->
+                viewModelFactory {
+                    initializer {
+                        CatsViewModel(catsRepository, localCatFactsGenerator, context)
+                    }
+                }
+            }
+    }
 }
 
 sealed class Result
