@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     val catsService: CatsService,
@@ -26,6 +27,8 @@ class CatsViewModel(
     fun getFacts() {
         val disposable = catsService.getCatFact()
             .subscribeOn(Schedulers.io())
+            .delay(2, TimeUnit.SECONDS)
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
             .subscribe({
                 _catsLiveData.postValue(Success(it))
             }, {
