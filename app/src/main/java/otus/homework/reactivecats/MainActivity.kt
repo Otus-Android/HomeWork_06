@@ -1,5 +1,6 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
@@ -18,6 +19,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    @SuppressLint("InflateParams")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
