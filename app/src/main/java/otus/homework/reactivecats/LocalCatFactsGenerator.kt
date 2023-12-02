@@ -27,7 +27,8 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
         val catFacts = context.resources.getStringArray(R.array.local_cat_facts)
-        return Flowable.fromCallable(CatFactsCallable(catFacts))
+        return Flowable.fromCallable { Fact(catFacts[Random.nextInt(5)]) }
             .repeatWhen { it.delay(2, TimeUnit.SECONDS) }
+            .distinctUntilChanged { t1, t2 -> t1.text == t2.text }
     }
 }

@@ -10,9 +10,9 @@ import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    val catsService: CatsService,
-    val localCatFactsGenerator: LocalCatFactsGenerator,
-    val context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val compositeDisposable = CompositeDisposable()
@@ -24,7 +24,7 @@ class CatsViewModel(
         getFacts()
     }
 
-    fun getFacts() {
+    private fun getFacts() {
         val disposable = catsService.getCatFact()
             .subscribeOn(Schedulers.io())
             .delay(2, TimeUnit.SECONDS)
