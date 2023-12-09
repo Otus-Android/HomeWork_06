@@ -1,27 +1,31 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.Disposable
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import otus.homework.reactivecats.LocalCatFactsGenerator.Companion.DELAY_SECOND
+import java.util.concurrent.TimeUnit
 
+
+
+@SuppressLint("StaticFieldLeak")
 class CatsViewModel(
     private val catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    private var disposable: Disposable? = null
+    private val compositeDisposable = CompositeDisposable()
 
     init {
 //        catsService.getCatFact().enqueue(object : Callback<Fact> {
@@ -44,15 +48,36 @@ class CatsViewModel(
         getFacts()
     }
 
-    fun getFacts() {
-        disposable = catsService.getCatFactSingle()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ fact ->
-                _catsLiveData.value = Success(fact)
-            }, { throwable ->
-                _catsLiveData.value = Error(throwable.message.orEmpty())
-            })
+    private fun getFacts() {
+        val disposable = Observable.interval(DELAY_SECOND, TimeUnit.SECONDS)
+            .flatMapSingle { catsService.getCatFactSingle() }
+            .observeOn(Schedulers.io())
+            .subscribeOn(AndroidSchedulers.mainThread())
+            .onErrorResumeNext(::handleOnErrorResumeNext)
+            .subscribe(::handleOnNext, ::handleOnError)
+
+        compositeDisposable.add(disposable)
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    private fun handleOnErrorResumeNext(throwable: Throwable): Observable<Fact> {
+        return localCatFactsGenerator.generateCatFactPeriodically().toObservable()
+    }
+
+    private fun handleOnNext(fact: Fact) {
+        _catsLiveData.postValue(Success(fact))
+    }
+
+    private fun handleOnError(throwable: Throwable) {
+        _catsLiveData.value = Error(
+            message = throwable.message ?: context.getString(R.string.default_error_text)
+        )
+    }
+
+
+    override fun onCleared() {
+        super.onCleared()
+        compositeDisposable.clear()
     }
 }
 
