@@ -11,7 +11,7 @@ class MainActivity : AppCompatActivity() {
 
     private val diContainer = DiContainer()
     private val catsViewModel by viewModels<CatsViewModel> {
-        CatsViewModel.factory(
+        catsViewModelFactory(
             diContainer.service,
             diContainer.localCatFactsGenerator(applicationContext),
             applicationContext
@@ -29,5 +29,6 @@ class MainActivity : AppCompatActivity() {
                 ServerError -> Snackbar.make(view, "Network error", 1000).show()
             }
         }
+        catsViewModel.getFacts()
     }
 }
