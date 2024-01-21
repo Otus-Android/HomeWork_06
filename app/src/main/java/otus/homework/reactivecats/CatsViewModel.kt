@@ -47,8 +47,8 @@ class CatsViewModelFactory(
     private val context: Context
 ) :
     ViewModelProvider.NewInstanceFactory() {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T =
+
+    override fun <T : ViewModel> create(modelClass: Class<T>): T =
         CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
 }
 
