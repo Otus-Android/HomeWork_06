@@ -1,44 +1,61 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
+import io.reactivex.subjects.BehaviorSubject
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
-    private val _catsLiveData = MutableLiveData<Result>()
-    val catsLiveData: LiveData<Result> = _catsLiveData
+    private val _catFactsSubject =
+        BehaviorSubject.createDefault<CatFactUiState>(CatFactUiState.Loading)
+    val catFactsObservable: Observable<CatFactUiState> = _catFactsSubject
+
+    private val viewModelDisposables = CompositeDisposable()
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
+        getFacts()
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact ->
+                    _catFactsSubject.onNext(CatFactUiState.Success(fact))
+                },
+                { error ->
+                    _catFactsSubject.onNext(
+                        CatFactUiState.Error(
+                            error.message or context.getString(R.string.default_error_text)
                         )
                     )
                 }
-            }
-
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+            )
+            .addTo(viewModelDisposables)
     }
 
-    fun getFacts() {}
+    private fun getFacts(): Observable<Fact> {
+        return Observable.interval(0, 2000, TimeUnit.MILLISECONDS)
+            .concatMapSingle {
+                catsService
+                    .getCatFact()
+                    .onErrorResumeNext(
+                        localCatFactsGenerator.generateCatFact()
+                    )
+            }
+            .subscribeOn(Schedulers.io())
+    }
+
+    override fun onCleared() {
+        viewModelDisposables.clear()
+        super.onCleared()
+    }
 }
 
 class CatsViewModelFactory(
@@ -48,11 +65,13 @@ class CatsViewModelFactory(
 ) :
     ViewModelProvider.NewInstanceFactory() {
 
+    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
         CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
 }
 
-sealed class Result
-data class Success(val fact: Fact) : Result()
-data class Error(val message: String) : Result()
-object ServerError : Result()
+sealed interface CatFactUiState {
+    data object Loading : CatFactUiState
+    data class Success(val fact: Fact) : CatFactUiState
+    data class Error(val message: String) : CatFactUiState
+}
