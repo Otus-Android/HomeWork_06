@@ -9,7 +9,9 @@ import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.lang.Thread.sleep
 
+private const val REFRESH_INTERVAL_MS: Long = 3000
 class CatsViewModel(
     private val catsService: CatsService,
     localCatFactsGenerator: LocalCatFactsGenerator,
@@ -22,23 +24,28 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-       getFacts(context,localCatFactsGenerator)
+            getFacts(context, localCatFactsGenerator)
     }
 
-    fun getFacts(context: Context,localCatFactsGenerator: LocalCatFactsGenerator,) {
+    fun getFacts(context: Context, localCatFactsGenerator: LocalCatFactsGenerator) {
 
-        val disposable = localCatFactsGenerator.generateCatFactPeriodically()// catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ fact ->
-                Log.d("flow", "$fact")
-                _catsLiveData.value = Success(fact)
-            }, { error ->
-                _catsLiveData.value = Error( error.message ?: context.getString(
-                    R.string.default_error_text
-                ))
-            })
-
+        val disposable =
+            catsService.getCatFact()
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .onErrorResumeNext{ localCatFactsGenerator.generateCatFact() }
+                .repeat(10)
+                .subscribe({ fact ->
+                    Log.d("flow", "$fact")
+                    _catsLiveData.value = Success(fact)
+                    sleep(REFRESH_INTERVAL_MS)
+                }, { error ->
+                    _catsLiveData.value = Error(
+                        error.message ?: context.getString(
+                            R.string.default_error_text
+                        )
+                    )
+                })
 
         compositeDisposable.add(disposable)
     }
