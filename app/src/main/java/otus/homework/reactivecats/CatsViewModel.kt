@@ -1,6 +1,7 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -21,21 +22,23 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-       getFacts(context)
+       getFacts(context,localCatFactsGenerator)
     }
 
-    fun getFacts(context: Context) {
+    fun getFacts(context: Context,localCatFactsGenerator: LocalCatFactsGenerator,) {
 
-        val disposable = catsService.getCatFact()
-            .subscribeOn(Schedulers.newThread())
+        val disposable = localCatFactsGenerator.generateCatFactPeriodically()// catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ fact ->
+                Log.d("flow", "$fact")
                 _catsLiveData.value = Success(fact)
             }, { error ->
                 _catsLiveData.value = Error( error.message ?: context.getString(
                     R.string.default_error_text
                 ))
             })
+
 
         compositeDisposable.add(disposable)
     }
