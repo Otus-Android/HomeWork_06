@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.reactivex.Observable
 import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.Call
@@ -26,7 +27,7 @@ class CatsViewModel(
     context: Context
 ) : ViewModel() {
 
-    private val disposables = mutableListOf<Disposable>()
+    private val disposables = CompositeDisposable()
     private val defaultErrorMessage = context.getString(R.string.default_error_text)
 
 
@@ -59,7 +60,7 @@ class CatsViewModel(
                 .delay(2L, TimeUnit.SECONDS)
                 .repeat()
                 .subscribe(
-                    { fact -> _catsLiveData.postValue(Success(fact)) },
+                    { fact -> _catsLiveData.value = Success(fact) },
                     { throwable ->
                         _catsLiveData.postValue(
                             Error(throwable.message ?: defaultErrorMessage)
@@ -70,7 +71,7 @@ class CatsViewModel(
     }
 
     override fun onCleared() {
-        disposables.onEach { it.dispose() }
+        disposables.clear()
     }
 }
 

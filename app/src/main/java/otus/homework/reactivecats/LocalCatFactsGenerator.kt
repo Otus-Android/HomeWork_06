@@ -13,12 +13,9 @@ class LocalCatFactsGenerator(context: Context) {
      * чтобы она возвращала Fact со случайной строкой  из массива строк R.array.local_cat_facts
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
-    fun generateCatFact() =
-        Single.create {
-            it.onSuccess(
-                Fact(text = defaultStringsArray.random())
-            )
-        }
+    fun generateCatFact() = Single.just(
+        Fact(text = defaultStringsArray.random())
+    )
 
 
     /**
