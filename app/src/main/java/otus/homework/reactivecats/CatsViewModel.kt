@@ -20,30 +20,17 @@ class CatsViewModel(
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
-    val disposable = CompositeDisposable()
+    private val disposable = CompositeDisposable()
 
     init {
-        disposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    { response ->
-                        if (response.isSuccessful && response.body() != null) {
-                            _catsLiveData.value = Success(response.body()!!)
-                        } else {
-                            _catsLiveData.value = Error(
-                                response.errorBody()?.string() ?: context.getString(
-                                    R.string.default_error_text
-                                )
-                            )
-                        }
-                    },
-                    {
-                        _catsLiveData.value = ServerError
-                    }
-                )
-        )
+        catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnSubscribe { disposable.add(it) }
+            .subscribe(
+                { fact -> _catsLiveData.value = Success(fact) },
+                { _catsLiveData.value = ServerError }
+            )
     }
 
     override fun onCleared() {
@@ -52,25 +39,17 @@ class CatsViewModel(
     }
 
     fun getFacts() {
-        disposable.add(
-            Observable.interval(0, 2, SECONDS)
-                .flatMap { catsService.getCatFact().toObservable() }
-                .map { response: Response<Fact> ->
-                    if (response.isSuccessful && response.body() != null) {
-                        response.body()!!
-                    } else {
-                        throw Throwable("Не удалось загрузить")
-                    }
-                }
-                .onErrorResumeNext(
-                    localCatFactsGenerator.generateCatFactPeriodically().toObservable()
-                )
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe { fact ->
-                    _catsLiveData.value = Success(fact)
-                }
-        )
+        Observable.interval(0, 2, SECONDS)
+            .flatMap { catsService.getCatFact().toObservable() }
+            .onErrorResumeNext(
+                localCatFactsGenerator.generateCatFactPeriodically().toObservable()
+            )
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnSubscribe { disposable.add(it) }
+            .subscribe { fact ->
+                _catsLiveData.value = Success(fact)
+            }
     }
 }
 
