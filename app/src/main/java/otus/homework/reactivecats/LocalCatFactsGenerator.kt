@@ -46,11 +46,6 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> =
         Flowable.interval(0, 2000, TimeUnit.MILLISECONDS)
             .switchMapSingle { generateCatFact() }
-            .buffer(2)
-            .filter { facts ->
-                val (previousFact, currentFact) = facts.zipWithNext().first()
-                currentFact != previousFact
-            }
-            .map { it.component2() }
+            .distinctUntilChanged()
 
 }
