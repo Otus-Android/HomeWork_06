@@ -3,8 +3,6 @@ package otus.homework.reactivecats
 import android.content.Context
 import io.reactivex.Flowable
 import io.reactivex.Single
-import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.BehaviorSubject
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
@@ -12,14 +10,9 @@ class LocalCatFactsGenerator(
     private val context: Context
 ) {
 
-    private val catFactsSubject = BehaviorSubject
-        .generate { emitter ->
-            val catFacts = context.resources.getStringArray(R.array.local_cat_facts)
-            emitter.onNext(catFacts)
-        }
-        .subscribeOn(Schedulers.io())
-
-    private val catFactsSingle = catFactsSubject.firstOrError()
+    private val catFactsSingle = Single.fromCallable {
+        context.resources.getStringArray(R.array.local_cat_facts)
+    }
 
     private fun getRandomFact(catFacts: Array<String>): String {
         return catFacts[Random.nextInt(catFacts.size)]
