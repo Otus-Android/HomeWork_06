@@ -6,9 +6,11 @@ import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.Single
 import java.lang.Thread.sleep
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 
+private const val REFRESH_INTERVAL_MS: Long = 2000
 class LocalCatFactsGenerator(
     private val context: Context
 ) {
@@ -47,12 +49,11 @@ class LocalCatFactsGenerator(
                         )
                     Log.d("flow", "$it $success")
                     emitter.onNext(success)
-                    sleep(2000)
                 }
                 emitter.onComplete()
             }, BackpressureStrategy.BUFFER
 
-        ).distinctUntilChanged()
+        ).distinctUntilChanged().delay(REFRESH_INTERVAL_MS, TimeUnit.MILLISECONDS)
 
 
         return source

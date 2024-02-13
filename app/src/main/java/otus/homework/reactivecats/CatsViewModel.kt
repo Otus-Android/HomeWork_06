@@ -9,9 +9,11 @@ import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import java.lang.Thread.sleep
+import java.util.concurrent.TimeUnit
+
 
 private const val REFRESH_INTERVAL_MS: Long = 3000
+
 class CatsViewModel(
     private val catsService: CatsService,
     localCatFactsGenerator: LocalCatFactsGenerator,
@@ -24,7 +26,7 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-            getFacts(context, localCatFactsGenerator)
+        getFacts(context, localCatFactsGenerator)
     }
 
     fun getFacts(context: Context, localCatFactsGenerator: LocalCatFactsGenerator) {
@@ -32,13 +34,13 @@ class CatsViewModel(
         val disposable =
             catsService.getCatFact()
                 .subscribeOn(Schedulers.newThread())
+                .delay(REFRESH_INTERVAL_MS, TimeUnit.MILLISECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
-                .onErrorResumeNext{ localCatFactsGenerator.generateCatFact() }
+                .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
                 .repeat(10)
                 .subscribe({ fact ->
                     Log.d("flow", "$fact")
                     _catsLiveData.value = Success(fact)
-                    sleep(REFRESH_INTERVAL_MS)
                 }, { error ->
                     _catsLiveData.value = Error(
                         error.message ?: context.getString(
