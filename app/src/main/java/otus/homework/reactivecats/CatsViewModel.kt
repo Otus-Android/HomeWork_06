@@ -26,13 +26,20 @@ class CatsViewModel(
 
     fun getFacts() {
         disposables.add(
-            catsService.getCatFact()
+//            localCatFactsGenerator.generateCatFact()
+            localCatFactsGenerator.generateCatFactPeriodically()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    { fact -> _catsLiveData.value = Success(fact)},
-                    { error -> handleFailure(error) }
-                )
+                .subscribe { fact ->
+                    _catsLiveData.value = Success(fact)
+                }
+//            catsService.getCatFact()
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .subscribe(
+//                    { fact -> _catsLiveData.value = Success(fact)},
+//                    { error -> handleFailure(error) }
+//                )
         )
     }
 
