@@ -5,9 +5,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     private val catsService: CatsService,
@@ -26,20 +28,20 @@ class CatsViewModel(
 
     fun getFacts() {
         disposables.add(
-//            localCatFactsGenerator.generateCatFact()
-            localCatFactsGenerator.generateCatFactPeriodically()
+            Flowable.interval(2000, TimeUnit.MILLISECONDS)
+                .observeOn(Schedulers.io())
+                .flatMapSingle {
+                    catsService.getCatFact()
+                        .onErrorResumeNext {
+                            // обратиться к локальному генератору фактов
+                            localCatFactsGenerator.generateCatFact()
+                        }
+                }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe { fact ->
                     _catsLiveData.value = Success(fact)
                 }
-//            catsService.getCatFact()
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(AndroidSchedulers.mainThread())
-//                .subscribe(
-//                    { fact -> _catsLiveData.value = Success(fact)},
-//                    { error -> handleFailure(error) }
-//                )
         )
     }
 
