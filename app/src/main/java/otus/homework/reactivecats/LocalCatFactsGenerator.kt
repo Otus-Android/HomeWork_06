@@ -15,7 +15,10 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
     fun generateCatFact(): Single<Fact> {
-        return Single.never()
+        val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
+        return Single.create {
+            it.onSuccess(success)
+        }
     }
 
     /**
@@ -24,7 +27,19 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        val success = context.resources.getStringArray(R.array.local_cat_facts)
+        var fact = success[Random.nextInt(5)]
+        return Flowable.unsafeCreate {
+            it.onNext(Fact(fact))
+            while(true) {
+                Thread.sleep(2000)
+                success[Random.nextInt(5)].let { newFact ->
+                    if(newFact != fact) {
+                        it.onNext(Fact(fact))
+                        fact = newFact
+                    }
+                }
+            }
+        }
     }
 }
