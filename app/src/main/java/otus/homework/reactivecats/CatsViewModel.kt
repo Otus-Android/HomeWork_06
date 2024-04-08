@@ -5,9 +5,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 
 class CatsViewModel(
     catsService: CatsService,
@@ -18,24 +17,31 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+    private val bag: CompositeDisposable = CompositeDisposable()
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
+    init {
+        catsService.getCatFact()
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact ->
+                    if (fact != null) {
+                        _catsLiveData.value = Success(fact)
+                    } else {
+                        _catsLiveData.value = Error(
+                            context.getString(R.string.default_error_text)
+                        )
+                    }
+                },
+                { _catsLiveData.value = ServerError }
+            )
+            .also {
+                bag.add(it)
             }
-        })
+    }
+
+    override fun onCleared() {
+        bag.clear()
+        super.onCleared()
     }
 
     fun getFacts() {}
