@@ -6,7 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.Disposable
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.HttpException
 
@@ -16,12 +16,12 @@ class CatsViewModel(
     context: Context
 ) : ViewModel() {
 
-    private var getCatFactDisposable: Disposable? = null
+    private var onClearedCompositDisposable = CompositeDisposable()
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        getCatFactDisposable = catsService.getCatFact()
+        catsService.getCatFact()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
@@ -40,13 +40,15 @@ class CatsViewModel(
                         else -> ServerError
                     }
                 }
-            )
+            ).also(onClearedCompositDisposable::add)
     }
 
-    fun getFacts() {}
+    fun getFacts() {
+
+    }
 
     override fun onCleared() {
-        getCatFactDisposable?.dispose()
+        onClearedCompositDisposable?.dispose()
     }
 }
 
