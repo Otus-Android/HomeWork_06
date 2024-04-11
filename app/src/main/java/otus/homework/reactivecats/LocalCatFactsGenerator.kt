@@ -2,7 +2,11 @@ package otus.homework.reactivecats
 
 import android.content.Context
 import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.Single
+import io.reactivex.schedulers.Schedulers
+import java.lang.Exception
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -14,8 +18,10 @@ class LocalCatFactsGenerator(
      * чтобы она возвращала Fact со случайной строкой  из массива строк R.array.local_cat_facts
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
-    fun generateCatFact(): Single<Fact> {
-        return Single.never()
+    fun generateCatFact(): Observable<Fact> {
+        val factsArray = context.resources.getStringArray(R.array.local_cat_facts)
+        val fact = Fact(factsArray[factsArray.indices.random()])
+        return Observable.just(fact)
     }
 
     /**
@@ -24,7 +30,20 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        val factsArray = context.resources.getStringArray(R.array.local_cat_facts)
+        var previousFact: Fact? = null
+
+        val flowable = Flowable.interval(0, 2, TimeUnit.SECONDS, Schedulers.io())
+            .map {
+                val randomFact = factsArray.indices.random()
+                Fact(factsArray[randomFact])
+            }.filter { fact ->
+                if (fact != previousFact) {
+                    previousFact = fact
+                    true
+                } else false
+            }
+
+        return flowable
     }
 }
