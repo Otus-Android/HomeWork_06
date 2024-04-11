@@ -5,12 +5,14 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    val catsService: CatsService,
+    val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -44,7 +46,9 @@ class CatsViewModel(
         super.onCleared()
     }
 
-    fun getFacts() {}
+    fun getFacts() = Observable.interval(2000, TimeUnit.MILLISECONDS)
+        .zipWith(catsService.getCatFact().toObservable()) { _, fact: Fact -> fact }
+        .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
 }
 
 class CatsViewModelFactory(
