@@ -5,14 +5,16 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit.SECONDS
 import retrofit2.HttpException
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -44,11 +46,16 @@ class CatsViewModel(
     }
 
     fun getFacts() {
-
+        Observable.interval(0, 2, SECONDS, Schedulers.io())
+            .flatMap { catsService.getCatFact().toObservable() }
+            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe { catFact -> _catsLiveData.value = Success(catFact) }
+            .also(onClearedCompositDisposable::add)
     }
 
     override fun onCleared() {
-        onClearedCompositDisposable?.dispose()
+        onClearedCompositDisposable.dispose()
     }
 }
 
