@@ -1,14 +1,9 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import android.util.Log
-import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
-import io.reactivex.FlowableOnSubscribe
-import io.reactivex.Scheduler
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
-import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
