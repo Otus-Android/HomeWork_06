@@ -30,4 +30,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    override fun onDestroy() {
+        catsViewModel.onDestroy()
+        super.onDestroy()
+    }
 }
