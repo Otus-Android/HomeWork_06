@@ -5,12 +5,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.SingleObserver
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
-import retrofit2.Call
-import retrofit2.Callback
 import retrofit2.HttpException
-import retrofit2.Response
 import java.io.IOException
 
 class CatsViewModel(
@@ -25,27 +24,33 @@ class CatsViewModel(
     private val compositeDisposable = CompositeDisposable()
 
     init {
-        compositeDisposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
-                .map<Result>{ fact -> Success(fact) }
-                .onErrorReturn { th ->
-                    return@onErrorReturn when(th) {
+        catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
+            .map<Result>{ fact -> Success(fact) }
+            .subscribe(object : SingleObserver<Result> {
+                override fun onSubscribe(d: Disposable) {
+
+                }
+
+                override fun onError(e: Throwable) {
+                    val result = when (e) {
                         is HttpException -> {
-                            Error(th.message())
+                            Error(e.message())
                         }
                         is IOException -> {
                             ServerError
                         }
                         else -> {
-                            Error(th.message ?: context.getString(R.string.default_error_text))
+                            Error(e.message ?: context.getString(R.string.default_error_text))
                         }
                     }
+                    _catsLiveData.postValue(result)
                 }
-                .subscribe {
-                    _catsLiveData.postValue(it)
+
+                override fun onSuccess(t: Result) {
+                   _catsLiveData.postValue(t)
                 }
-        )
+            })
     }
 
     fun getFacts() {}

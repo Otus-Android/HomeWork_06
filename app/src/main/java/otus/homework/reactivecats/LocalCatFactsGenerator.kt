@@ -2,6 +2,7 @@ package otus.homework.reactivecats
 
 import android.content.Context
 import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.Single
 import kotlin.random.Random
 
@@ -15,7 +16,11 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
     fun generateCatFact(): Single<Fact> {
-        return Single.never()
+        return Single.create { e ->
+            val facts = context.resources.getStringArray(R.array.local_cat_facts)
+            val fact = Fact(facts[Random.nextInt(facts.size)])
+            e.onSuccess(fact)
+        }
     }
 
     /**
