@@ -22,6 +22,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
         setContentView(view)
+
+
         catsViewModel.catsLiveData.observe(this) { result ->
             when (result) {
                 is Success -> view.populate(result.fact)
@@ -29,5 +31,14 @@ class MainActivity : AppCompatActivity() {
                 ServerError -> Snackbar.make(view, "Network error", 1000).show()
             }
         }
+
+        // 3. randomFact
+//        catsViewModel.randomFact()
+
+        // 4. generateCatFactPeriodically
+//        catsViewModel.generateCatFactPeriodically()
+
+        // 5. getFacts
+//         catsViewModel.getFacts()
     }
 }
