@@ -1,6 +1,7 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -25,9 +26,12 @@ class CatsViewModel(
 
     init {
         getFacts()
+        getCatFact()
+        getCatFactPeriodically()
     }
 
     private fun getFacts() {
+        Log.d("MyAppRX", "getFacts()")
         compositeDisposable.add(
             catsService.getCatFact()
                 .subscribeOn(Schedulers.io())
@@ -37,17 +41,47 @@ class CatsViewModel(
         )
     }
 
+    private fun getCatFact() {
+        Log.d("MyAppRX", "getCatFact()")
+        compositeDisposable.add(
+            localCatFactsGenerator.generateCatFact()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ _catsLiveData.postValue(Success(it)) },
+                    { error -> errorParser(error) })
+        )
+    }
+
+    private fun getCatFactPeriodically() {
+        Log.d("MyAppRX", "getCatFactPeriodically()")
+        compositeDisposable.addAll(
+            localCatFactsGenerator.generateCatFactPeriodically()
+                .repeat()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+                    _catsLiveData.value = (Success(it))
+                    Log.d("MyAppRX", "getCatFactPeriodically() ${it.text}")
+                },
+                    { error -> errorParser(error) })
+        )
+    }
+
+
     private fun errorParser(error: Throwable?) {
         when (error) {
             is HttpException -> {
+                Log.e("MyAppRX", "HttpException")
                 Error(error.message())
             }
 
             is IOException -> {
+                Log.e("MyAppRX", "IOException")
                 ServerError
             }
 
             else -> {
+                Log.e("MyAppRX", defaultErrorMessage)
                 Error(
                     error?.message ?: defaultErrorMessage
                 )
