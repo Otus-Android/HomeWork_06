@@ -1,13 +1,16 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.*
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     catsService: CatsService,
@@ -18,27 +21,42 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
+    private var disposables = CompositeDisposable()
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
-
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+        getFacts(catsService, localCatFactsGenerator)
     }
 
-    fun getFacts() {}
+    override fun onCleared() {
+        disposables.dispose()
+        super.onCleared()
+    }
+
+    @SuppressLint("CheckResult")
+    fun getFacts(
+        catsService: CatsService,
+        localCatFactsGenerator: LocalCatFactsGenerator
+    ) {
+
+        val flowable = Flowable
+            .interval(2, TimeUnit.SECONDS)
+            .flatMap{
+                    catsService.getCatFact()
+            }
+            .onErrorResumeNext( localCatFactsGenerator.generateCatFact().toFlowable()  )
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    _catsLiveData.value = Success(it)
+                },{
+                    _catsLiveData.value = Error("Не могу получить данные")
+                })
+
+        localCatFactsGenerator.generateCatFact().toFlowable()
+
+        disposables.add(flowable)
+
+    }
 }
 
 class CatsViewModelFactory(
