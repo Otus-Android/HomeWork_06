@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.Observable
 import io.reactivex.SingleObserver
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
@@ -26,33 +27,29 @@ class CatsViewModel(
     private val compositeDisposable = CompositeDisposable()
 
     init {
-        catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .map<Result>{ fact -> Success(fact) }
-            .subscribe(object : SingleObserver<Result> {
-                override fun onSubscribe(d: Disposable) {
-
-                }
-
-                override fun onError(e: Throwable) {
-                    val result = when (e) {
-                        is HttpException -> {
-                            Error(e.message())
+        compositeDisposable.add(
+            catsService.getCatFact()
+                .subscribeOn(Schedulers.io())
+                .map<Result>{ fact -> Success(fact) }
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { _catsLiveData.value = it },
+                    {
+                        val result = when (it) {
+                            is HttpException -> {
+                                Error(it.message())
+                            }
+                            is IOException -> {
+                                ServerError
+                            }
+                            else -> {
+                                Error(it.message ?: context.getString(R.string.default_error_text))
+                            }
                         }
-                        is IOException -> {
-                            ServerError
-                        }
-                        else -> {
-                            Error(e.message ?: context.getString(R.string.default_error_text))
-                        }
+                        _catsLiveData.value = result
                     }
-                    _catsLiveData.postValue(result)
-                }
-
-                override fun onSuccess(t: Result) {
-                   _catsLiveData.postValue(t)
-                }
-            })
+                )
+        )
         getFacts()
     }
 
@@ -61,13 +58,21 @@ class CatsViewModel(
             Observable.interval(PERIOD_MS, TimeUnit.MILLISECONDS)
                 .flatMap {
                     catsService.getCatFact()
-                        .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+                        .onErrorResumeNext(
+                            localCatFactsGenerator.generateCatFact()
+                        )
                         .toObservable()
                 }
                 .map<Result> { fact -> Success(fact) }
-                .subscribe {
-                    _catsLiveData.postValue(it)
-                }
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    {
+                        _catsLiveData.value = it
+                    },
+                    {
+                        _catsLiveData.value = Error(it.message.toString())
+                    }
+                )
         )
     }
 

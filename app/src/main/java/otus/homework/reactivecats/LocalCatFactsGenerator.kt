@@ -19,7 +19,7 @@ class LocalCatFactsGenerator(
     fun generateCatFact(): Single<Fact> {
         return Single.create { e ->
             val facts = context.resources.getStringArray(R.array.local_cat_facts)
-            val fact = Fact(facts[Random.nextInt(facts.size)])
+            val fact = Fact(facts[Random.nextInt(10)])
             e.onSuccess(fact)
         }
     }
