@@ -4,6 +4,7 @@ import android.content.Context
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.Observable
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -25,16 +26,13 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        return Flowable.create<Fact>(
-            /* source = */ { emitter ->
-                while (emitter.isCancelled.not()) {
-                    emitter.onNext(getRandomFact())
-                    Thread.sleep(2000)
-                }
-            },
-            /* mode = */ BackpressureStrategy.LATEST
-        )
-            .distinctUntilChanged()
+        return Flowable.interval(2000, TimeUnit.MILLISECONDS)
+            .flatMap {
+                Flowable.create<Fact>(
+                    { emitter -> emitter.onNext(getRandomFact()) },
+                    BackpressureStrategy.LATEST
+                )
+            }.distinctUntilChanged()
     }
 
     private fun getRandomFact(): Fact =
