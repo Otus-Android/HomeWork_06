@@ -10,12 +10,13 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit.SECONDS
+import otus.homework.reactivecats.R.string
 import retrofit2.HttpException
 
 class CatsViewModel(
     private val catsService: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val context: Context,
 ) : ViewModel() {
 
     private var onClearedCompositDisposable = CompositeDisposable()
@@ -27,31 +28,45 @@ class CatsViewModel(
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
-                { catFact ->
-                    _catsLiveData.value = Success(catFact)
-                },
-                { throwable ->
-                    _catsLiveData.value = when(throwable) {
-                        is HttpException -> {
-                            Error(
-                                throwable.response()?.errorBody()?.string() ?: context.getString(
-                                    R.string.default_error_text
-                                )
-                            )
-                        }
-                        else -> ServerError
-                    }
-                }
+                ::handleGetCatFactSuccess,
+                ::handlGetFactError
             ).also(onClearedCompositDisposable::add)
     }
 
     fun getFacts() {
         Observable.interval(0, 2, SECONDS, Schedulers.io())
-            .flatMap { catsService.getCatFact().toObservable() }
-            .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
+            .flatMap {
+                catsService.getCatFact()
+                    .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+                    .toObservable()
+            }
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe { catFact -> _catsLiveData.value = Success(catFact) }
+            .subscribe(
+                ::handleGetCatFactSuccess,
+                ::handlGetFactError
+            )
             .also(onClearedCompositDisposable::add)
+    }
+
+    private fun handleGetCatFactSuccess(catFact : Fact) {
+        _catsLiveData.value = Success(catFact)
+    }
+
+    private fun handlGetFactError(throwable : Throwable?) {
+        _catsLiveData.value = when (throwable) {
+            is HttpException -> {
+                Error(
+                    throwable
+                        .response()
+                        ?.errorBody()
+                        ?.string() ?: context.getString(
+                        string.default_error_text
+                    )
+                )
+            }
+
+            else -> ServerError
+        }
     }
 
     override fun onCleared() {
