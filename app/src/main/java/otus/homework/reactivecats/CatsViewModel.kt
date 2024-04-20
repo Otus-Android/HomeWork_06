@@ -38,9 +38,12 @@ class CatsViewModel(
 
     private fun getFacts() : Flowable<Fact> {
         return Flowable.interval(2000, TimeUnit.MILLISECONDS)
-            .flatMap { catsService.getCatFact().toFlowable() }
-            .onErrorResumeNext { throwable: Throwable ->
-                localCatFactsGenerator.generateCatFact().toFlowable()
+            .flatMap {
+                catsService.getCatFact()
+                    .toFlowable()
+                    .onErrorResumeNext { throwable: Throwable ->
+                        localCatFactsGenerator.generateCatFact().toFlowable()
+                    }
             }
     }
 }
