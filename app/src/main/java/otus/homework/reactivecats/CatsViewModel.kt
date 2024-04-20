@@ -11,8 +11,8 @@ import io.reactivex.disposables.CompositeDisposable
 import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    val catsService: CatsService,
-    val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
