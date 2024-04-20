@@ -22,7 +22,7 @@ class CatsViewModel(
     private val bag: CompositeDisposable = CompositeDisposable()
 
     init {
-        catsService.getCatFact()
+        getFacts()
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { fact ->
@@ -46,8 +46,10 @@ class CatsViewModel(
         super.onCleared()
     }
 
-    fun getFacts() = Observable.interval(2000, TimeUnit.MILLISECONDS)
-        .zipWith(catsService.getCatFact().toObservable()) { _, fact: Fact -> fact }
+    private fun getFacts(): Observable<Fact> = Observable.interval(2000, TimeUnit.MILLISECONDS)
+        .flatMap { _ ->
+            catsService.getCatFact().toObservable()
+        }
         .onErrorResumeNext(localCatFactsGenerator.generateCatFact().toObservable())
 }
 
