@@ -35,16 +35,15 @@ class CatsViewModel(
         Log.d("MyAppRX", "getFacts()")
         compositeDisposable.add(
             catsService.getCatFact()
-                .repeat()
                 .subscribeOn(Schedulers.io())
-                .debounce(2000, TimeUnit.MILLISECONDS)
                 .onErrorResumeNext(localCatFactsGenerator.generateCatFactPeriodically())
+                .repeatWhen { it.delay(2000, TimeUnit.MILLISECONDS) }
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
                     _catsLiveData.postValue(Success(it))
                     Log.d("MyAppRX", "getFacts() ${it.text}")
                 },
-                    { error -> errorParser(error) })
+                    { error -> _catsLiveData.postValue(errorParser(error)) })
         )
     }
 
@@ -55,7 +54,7 @@ class CatsViewModel(
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ _catsLiveData.postValue(Success(it)) },
-                    { error -> errorParser(error) })
+                    { error -> _catsLiveData.postValue(errorParser(error)) })
         )
     }
 
@@ -63,20 +62,19 @@ class CatsViewModel(
         Log.d("MyAppRX", "getCatFactPeriodically()")
         compositeDisposable.addAll(
             localCatFactsGenerator.generateCatFactPeriodically()
-                .repeat()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-                    _catsLiveData.value = (Success(it))
+                    _catsLiveData.postValue(Success(it))
                     Log.d("MyAppRX", "getCatFactPeriodically() ${it.text}")
                 },
-                    { error -> errorParser(error) })
+                    { error -> _catsLiveData.postValue(errorParser(error)) })
         )
     }
 
 
-    private fun errorParser(error: Throwable?) {
-        when (error) {
+    private fun errorParser(error: Throwable?): Result {
+        return when (error) {
             is HttpException -> {
                 Log.e("MyAppRX", "HttpException")
                 Error(error.message())
