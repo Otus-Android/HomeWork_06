@@ -40,10 +40,10 @@ class CatsViewModel(
                 .repeatWhen { it.delay(2000, TimeUnit.MILLISECONDS) }
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-                    _catsLiveData.postValue(Success(it))
+                    _catsLiveData.value = Success(it)
                     Log.d("MyAppRX", "getFacts() ${it.text}")
                 },
-                    { error -> _catsLiveData.postValue(errorParser(error)) })
+                    { error -> _catsLiveData.setValue(errorParser(error)) })
         )
     }
 
@@ -53,8 +53,8 @@ class CatsViewModel(
             localCatFactsGenerator.generateCatFact()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ _catsLiveData.postValue(Success(it)) },
-                    { error -> _catsLiveData.postValue(errorParser(error)) })
+                .subscribe({ _catsLiveData.value = Success(it) },
+                    { error -> _catsLiveData.setValue(errorParser(error)) })
         )
     }
 
@@ -65,10 +65,10 @@ class CatsViewModel(
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-                    _catsLiveData.postValue(Success(it))
+                    _catsLiveData.value = Success(it)
                     Log.d("MyAppRX", "getCatFactPeriodically() ${it.text}")
                 },
-                    { error -> _catsLiveData.postValue(errorParser(error)) })
+                    { error -> _catsLiveData.setValue(errorParser(error)) })
         )
     }
 
