@@ -31,18 +31,12 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
         val factsArray = context.resources.getStringArray(R.array.local_cat_facts)
-        var previousFact: Fact? = null
 
         val flowable = Flowable.interval(0, 2, TimeUnit.SECONDS, Schedulers.io())
             .map {
                 val randomFact = factsArray.indices.random()
                 Fact(factsArray[randomFact])
-            }.filter { fact ->
-                if (fact != previousFact) {
-                    previousFact = fact
-                    true
-                } else false
-            }
+            }.distinct { fact -> fact }
 
         return flowable
     }

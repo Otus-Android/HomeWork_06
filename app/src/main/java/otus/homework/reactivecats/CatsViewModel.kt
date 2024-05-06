@@ -6,16 +6,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import retrofit2.Call
-import retrofit2.Callback
 import retrofit2.HttpException
-import retrofit2.Response
-import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 @SuppressLint("CheckResult")
@@ -64,24 +59,25 @@ class CatsViewModel(
 
     private fun getFacts() {
         val networkObservable = Observable.interval(0, 2, TimeUnit.SECONDS)
-            .concatMapEager {
+            .flatMapSingle {
                 catsService.getCatFact()
                     .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-            }.onErrorResumeNext { exception: Throwable ->
+            }.onErrorResumeNext { _: Throwable ->
+                localCatFactsGenerator.generateCatFact()
+            }
+
+        val disposable = networkObservable
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ fact ->
+                _catsLiveData.value = Success(fact)
+            }, { exception ->
                 if (exception is HttpException && exception.code() == 500) {
                     _catsLiveData.value = ServerError
                 } else {
                     _catsLiveData.value =
                         Error(exception.message ?: context.getString(R.string.default_error_text))
                 }
-
-                localCatFactsGenerator.generateCatFact()
-            }
-
-        val disposable = networkObservable.subscribe { fact ->
-            _catsLiveData.value = Success(fact)
-        }
+            })
 
         compositeDisposable.add(disposable)
     }
