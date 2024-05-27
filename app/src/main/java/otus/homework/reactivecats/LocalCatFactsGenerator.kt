@@ -1,12 +1,9 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import android.widget.Toast
 import io.reactivex.Flowable
 import io.reactivex.Single
-import java.lang.RuntimeException
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
 class LocalCatFactsGenerator(
     private val context: Context
@@ -18,21 +15,11 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
     fun generateCatFact(): Single<Fact> {
-        return Single.create<Fact?> { emitter ->
-            val generatedFact = context.resources.getStringArray(R.array.local_cat_facts).random()
-            if (emitter.isDisposed) {
-                emitter.onSuccess(
-                    Fact(
-                    generatedFact
-                )
-                )
-            } else {
-                emitter.onError(RuntimeException("generateCatFactDisposedError"))
-            }
+        return Single.fromCallable {
+            Fact(
+                context.resources.getStringArray(R.array.local_cat_facts).random()
+            )
         }
-            .doOnError {
-                Toast.makeText(context, it.localizedMessage, Toast.LENGTH_SHORT).show()
-            }
     }
 
     /**

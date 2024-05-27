@@ -1,7 +1,6 @@
 package otus.homework.reactivecats
 
 import android.annotation.SuppressLint
-import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -15,8 +14,7 @@ import java.util.concurrent.TimeUnit
 @SuppressLint("CheckResult")
 class CatsViewModel(
     private val catsService: CatsService,
-    private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
+    private val localCatFactsGenerator: LocalCatFactsGenerator
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
@@ -30,7 +28,7 @@ class CatsViewModel(
 
     private fun getFacts() {
         val getCatsDisposable = Observable.interval(2L, TimeUnit.SECONDS)
-            .flatMap { catsService.getCatFact() }
+            .flatMap { catsService.getCatFact().toObservable() }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .distinctUntilChanged()
@@ -59,13 +57,12 @@ class CatsViewModel(
 
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
-    private val localCatFactsGenerator: LocalCatFactsGenerator,
-    private val context: Context
+    private val localCatFactsGenerator: LocalCatFactsGenerator
 ) :
     ViewModelProvider.NewInstanceFactory() {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(catsRepository, localCatFactsGenerator) as T
 }
 
 sealed class Result
