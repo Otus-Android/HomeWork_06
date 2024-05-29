@@ -1,10 +1,12 @@
 package otus.homework.reactivecats
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
@@ -32,8 +34,9 @@ class CatsViewModel(
                 }
             )
 
-    private val flowableFacts = getFacts().subscribeOn(Schedulers.io())
-        .subscribe { _catsLiveData.value = Success(it) }
+    private val flowableFacts = getFacts()
+        .subscribe( { _catsLiveData.value = Success(it) },
+                    { _catsLiveData.value = ServerError })
 
     override fun onCleared() {
         super.onCleared()
@@ -41,24 +44,16 @@ class CatsViewModel(
         flowableFacts.dispose()
     }
 
-    fun getFacts(): Observable<Fact> {
-        return Observable.create<Fact> { emitter ->
-            while(!emitter.isDisposed) {
-                catsService.getCatFact()
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                        { fact ->
-                            emitter.onNext(fact)
-                        },
-                        {
-                            localCatFactsGenerator.generateCatFact().subscribe { localFact ->
-                                emitter.onNext(localFact)
-                            }.dispose()
-                        }
-                    )
-                TimeUnit.MILLISECONDS.sleep(2000)
-            }
-        }
+    @SuppressLint("CheckResult")
+    fun getFacts(): Flowable<Fact> {
+        return catsService.getCatFact()
+            .delay(2, TimeUnit.SECONDS)
+            .repeat()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .onErrorResumeNext(
+                localCatFactsGenerator.generateCatFact().toFlowable()
+            )
     }
 }
 
