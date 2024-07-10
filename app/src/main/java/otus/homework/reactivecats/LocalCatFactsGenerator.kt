@@ -1,14 +1,18 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.util.Log
 import io.reactivex.Flowable
 import io.reactivex.Single
+import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
     private val context: Context
 ) {
 
+    private val tag = javaClass.simpleName
     private val localCatFacts = context.resources.getStringArray(R.array.local_cat_facts)
 
     /**
@@ -18,10 +22,12 @@ class LocalCatFactsGenerator(
      */
     fun generateCatFact(): Single<Fact> {
         return Single.fromCallable {
-            val randomFact = localCatFacts[Random.Default.nextInt(localCatFacts.size)]
-            Fact(randomFact)
+            getRandomLocalCatFact()
         }
     }
+
+    private fun getRandomLocalCatFact(): Fact =
+        Fact(localCatFacts[Random.Default.nextInt(localCatFacts.size)])
 
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFactPeriodically так,
@@ -29,7 +35,24 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        return Flowable.interval(
+            LOCAL_CAT_FACTS_INTERVAL_MS,
+            TimeUnit.MILLISECONDS,
+            Schedulers.computation()
+        )
+            .flatMap {
+                Flowable.fromCallable { getRandomLocalCatFact() }
+                    .doOnError { error ->
+                        Log.e(tag, "Error generating cat fact: ${error.message}")
+                    }
+                    .onErrorResumeNext(
+                        Flowable.just(Fact(context.getString(R.string.default_error_text)))
+                    )
+            }
+            .distinctUntilChanged()
+    }
+
+    companion object {
+        private const val LOCAL_CAT_FACTS_INTERVAL_MS = 2000L
     }
 }
