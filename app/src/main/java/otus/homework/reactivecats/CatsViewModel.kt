@@ -6,13 +6,15 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -20,6 +22,7 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
     private val subscriptionDisposables: CompositeDisposable = CompositeDisposable()
+    private val defaultErrorText: String = context.getString(R.string.default_error_text)
 
     init {
 
@@ -37,21 +40,43 @@ class CatsViewModel(
                         _catsLiveData.value = ServerError
                     } else {
                         Log.e(tag, "Error: $error")
-                        _catsLiveData.value = Error(
-                            error.message ?: context.getString(R.string.default_error_text)
-                        )
+                        _catsLiveData.value = Error(error.message ?: defaultErrorText)
                     }
                 }
             )
-
         subscriptionDisposables.add(catFactsSubscription)
     }
 
-    fun getFacts() {}
+    fun getFacts() {
+        val catFactsIntervalSubscription = Observable
+            .interval(NET_CAT_FACTS_INTERVAL_MS, TimeUnit.MILLISECONDS, Schedulers.computation())
+            .subscribeOn(Schedulers.io())
+            .flatMap {
+                catsService
+                    .getCatFact()
+                    .onErrorResumeNext { throwable: Throwable ->
+                        Log.e(tag, "Network request failed: $throwable, fallback to local data")
+                        localCatFactsGenerator.generateCatFact().toObservable()
+                    }
+            }
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact: Fact -> _catsLiveData.value = Success(fact) },
+                { error: Throwable ->
+                    Log.e(tag, "Error: $error")
+                    _catsLiveData.value = Error(error.message ?: defaultErrorText)
+                }
+            )
+        subscriptionDisposables.add(catFactsIntervalSubscription)
+    }
 
     override fun onCleared() {
         super.onCleared()
         subscriptionDisposables.dispose()
+    }
+
+    companion object {
+        private const val NET_CAT_FACTS_INTERVAL_MS = 2000L
     }
 }
 
