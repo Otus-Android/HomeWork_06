@@ -42,11 +42,11 @@ class CatsViewModel(
         val disposable = Observable.interval(2, TimeUnit.SECONDS)
             .flatMapSingle {
                 catsService.getCatFact()
+                    .subscribeOn(Schedulers.io())
                     .onErrorResumeNext { _: Throwable ->
                         localCatFactsGenerator.generateCatFact()
                     }
             }
-            .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { fact ->
