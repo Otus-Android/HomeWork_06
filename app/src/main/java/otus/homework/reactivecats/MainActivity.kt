@@ -1,11 +1,13 @@
 package otus.homework.reactivecats
 
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Context
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.lifecycle.lifecycleScope
-import com.google.android.material.snackbar.Snackbar
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,16 +20,64 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private lateinit var catsView: CatsView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
-        setContentView(view)
+        setContentView(R.layout.activity_main)
+
+        catsView =
+            findViewById(R.id.catsView) // Assuming catsView is the correct ID for your CatsView in activity_main.xml
+
         catsViewModel.catsLiveData.observe(this) { result ->
             when (result) {
-                is Success -> view.populate(result.fact)
-                is Error -> Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
-                ServerError -> Snackbar.make(view, "Network error", 1000).show()
+                is Result.Success -> catsView.populate(result.data)
+                is Result.Error -> {
+                    showToast(result.message)
+                    // Optionally, handle additional error logic
+                }
+                Result.ServerError -> {
+                    showToast("Server error occurred")
+                    // Optionally, handle additional server error logic
+                }
+
+                else -> {
+                    showToast("Unexpected result")
+                }
             }
         }
+
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+
+    override fun onStop() {
+        super.onStop()
+        // No additional code needed for onStop() based on the provided requirements
     }
 }
+
+
+class CatsViewModelFactory(
+    private val catsRepository: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
+) :
+    ViewModelProvider.NewInstanceFactory() {
+
+    override fun <T : ViewModel> create(modelClass: Class<T>): T =
+        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+}
+
+sealed class Result<out T> {
+    data class Success<T>(val data: T) : Result<T>()
+    data class Error(val message: String) : Result<Nothing>()
+    object ServerError : Result<Nothing>()
+}
+
+data class Success(val fact: Fact) : Result<Fact>()
+data class Error(val message: String) : Result<Nothing>()
+object ServerError : Result<Nothing>()

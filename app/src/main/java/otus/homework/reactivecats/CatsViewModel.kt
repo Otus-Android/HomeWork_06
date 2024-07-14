@@ -1,58 +1,89 @@
 package otus.homework.reactivecats
 
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import retrofit2.HttpException
+import java.net.SocketTimeoutException
+
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
-) : ViewModel() {
-
-    private val _catsLiveData = MutableLiveData<Result>()
-    val catsLiveData: LiveData<Result> = _catsLiveData
-
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
-
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
-    }
-
-    fun getFacts() {}
-}
-
-class CatsViewModelFactory(
-    private val catsRepository: CatsService,
+    private val catsService: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
-) :
-    ViewModelProvider.NewInstanceFactory() {
+) : ViewModel() {
 
-    override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+    private val _catsLiveData = MutableLiveData<Result<CatFactPresentation>>()
+    val catsLiveData: LiveData<Result<CatFactPresentation>> = _catsLiveData
+
+    private var job: Job? = null
+
+    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, exception ->
+        println("Exception handler")
+        //handleException(exception)
+    }
+
+    init {
+        startFetchingCatFactsAndImages()
+    }
+
+    private fun startFetchingCatFactsAndImages() {
+        job?.cancel()
+        job = viewModelScope.launch(coroutineExceptionHandler) {
+            while (isActive) {
+                try {
+                    val fact = withContext(Dispatchers.IO) {
+                        catsService.getCatFact()
+                    }
+                    val catImage = withContext(Dispatchers.IO) {
+                        RetrofitInstance.catImageService.getRandomCatImage().firstOrNull()
+                    }
+                    _catsLiveData.postValue(Result.Success(CatFactPresentation(fact.text, catImage?.url)))
+                } catch (exception: Exception) {
+                    handleException(exception)
+                }
+                delay(2000) // Delay for 2 seconds before fetching the next fact and image
+            }
+        }
+    }
+
+    private suspend fun handleException(exception: Throwable) {
+        when (exception) {
+            is SocketTimeoutException -> {
+                showToast("Не удалось получить ответ от сервера")
+            }
+            is HttpException -> {
+                showToast(exception.message ?: context.getString(R.string.default_error_text))
+            }
+            else -> {
+                showToast(exception.message ?: context.getString(R.string.default_error_text))
+            }
+        }
+        val fallbackFact = withContext(Dispatchers.IO) {
+            localCatFactsGenerator.generateCatFact()
+        }
+        _catsLiveData.postValue(Result.Success(CatFactPresentation(fallbackFact.text, null)))
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        job?.cancel()
+    }
 }
 
-sealed class Result
-data class Success(val fact: Fact) : Result()
-data class Error(val message: String) : Result()
-object ServerError : Result()
+
+
