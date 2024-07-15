@@ -5,9 +5,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     catsService: CatsService,
@@ -17,28 +19,77 @@ class CatsViewModel(
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
+    private var compositeDisposable: CompositeDisposable? = CompositeDisposable()
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
+        getFacts(
+            sercive = catsService,
+            localCatFactsGenerator = localCatFactsGenerator
+        ).subscribe(
+            { fact: Fact? ->
+                setSuccessResult(fact = fact, context = context)
+            },
+            {
+                /**
+                 * Тут серверной ошибки быть не может, так как у нас установлен фоллбэк,
+                 * поэтому показываем только ошибку об отсутствии локальных фактов
+                 */
+                setEmptyCatsErrorResult(context)
             }
-
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+        ).also { disposable ->
+            compositeDisposable?.add(disposable)
+        }
     }
 
-    fun getFacts() {}
+    /**
+     * Метод настроен так, что каждые 2 секунды ходит в сеть.
+     * Если возникает ошибка, показывается тост об ошибке,
+     * затем метод генерирует локальный факт.
+     * Поход в сеть при этом не прекращается.
+     * Как только соединение будет восстановлено,
+     * факты с сервера начнут приходить, а тосты с ошибкой прекратятся.
+     */
+    fun getFacts(
+        sercive: CatsService,
+        localCatFactsGenerator: LocalCatFactsGenerator
+    ): Observable<Fact?> {
+        return Observable.interval(
+            FACTS_INITIAL_REQUEST_DELAY,
+            FACTS_PERIOD_REQUEST_DELAY,
+            TimeUnit.SECONDS,
+            Schedulers.io()
+        )
+            .flatMapSingle {
+                sercive.getCatFact()
+                    /** Main нужно установить именно тут, чтобы корректно показывался Toast */
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .doOnError { setServerErrorResult() }
+                    .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+            }
+    }
+
+    private fun setSuccessResult(fact: Fact?, context: Context) {
+        if (fact != null) {
+            _catsLiveData.value = Success(fact)
+        } else {
+            setEmptyCatsErrorResult(context)
+        }
+    }
+
+    private fun setServerErrorResult() {
+        _catsLiveData.value = ServerError
+    }
+
+    private fun setEmptyCatsErrorResult(context: Context) {
+        val errorMessage = context.getString(R.string.default_error_text)
+        _catsLiveData.value = Error(errorMessage)
+    }
+
+    override fun onCleared() {
+        compositeDisposable?.dispose()
+        compositeDisposable = null
+        super.onCleared()
+    }
 }
 
 class CatsViewModelFactory(
