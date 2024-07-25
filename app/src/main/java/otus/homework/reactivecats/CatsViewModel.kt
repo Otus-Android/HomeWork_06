@@ -22,6 +22,18 @@ class CatsViewModel(
     private var compositeDisposable: CompositeDisposable? = CompositeDisposable()
 
     init {
+        subscribeFacts(
+            catsService = catsService,
+            localCatFactsGenerator = localCatFactsGenerator,
+            context = context
+        )
+    }
+
+    fun subscribeFacts(
+        catsService: CatsService,
+        localCatFactsGenerator: LocalCatFactsGenerator,
+        context: Context
+    ) {
         getFacts(
             sercive = catsService,
             localCatFactsGenerator = localCatFactsGenerator
