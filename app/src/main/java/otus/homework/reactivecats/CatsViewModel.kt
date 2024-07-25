@@ -38,8 +38,8 @@ class CatsViewModel(
             sercive = catsService,
             localCatFactsGenerator = localCatFactsGenerator
         ).subscribe(
-            { fact: Fact? ->
-                setSuccessResult(fact = fact, context = context)
+            { fact: Fact ->
+                setSuccessResult(fact = fact)
             },
             {
                 /**
@@ -64,7 +64,7 @@ class CatsViewModel(
     fun getFacts(
         sercive: CatsService,
         localCatFactsGenerator: LocalCatFactsGenerator
-    ): Observable<Fact?> {
+    ): Observable<Fact> {
         return Observable.interval(
             FACTS_INITIAL_REQUEST_DELAY,
             FACTS_PERIOD_REQUEST_DELAY,
@@ -80,12 +80,8 @@ class CatsViewModel(
             }
     }
 
-    private fun setSuccessResult(fact: Fact?, context: Context) {
-        if (fact != null) {
-            _catsLiveData.value = Success(fact)
-        } else {
-            setEmptyCatsErrorResult(context)
-        }
+    private fun setSuccessResult(fact: Fact) {
+        _catsLiveData.value = Success(fact)
     }
 
     private fun setServerErrorResult() {
