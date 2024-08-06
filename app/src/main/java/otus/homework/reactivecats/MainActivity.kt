@@ -13,8 +13,7 @@ class MainActivity : AppCompatActivity() {
     private val catsViewModel by viewModels<CatsViewModel> {
         CatsViewModelFactory(
             diContainer.service,
-            diContainer.localCatFactsGenerator(applicationContext),
-            applicationContext
+            diContainer.localCatFactsGenerator(applicationContext)
         )
     }
 
@@ -26,6 +25,7 @@ class MainActivity : AppCompatActivity() {
             when (result) {
                 is Success -> view.populate(result.fact)
                 is Error -> Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                is ErrorRes -> Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                 ServerError -> Snackbar.make(view, "Network error", 1000).show()
             }
         }
