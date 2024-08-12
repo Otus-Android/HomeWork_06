@@ -33,9 +33,7 @@ class LocalCatFactsGenerator(
             localFacts = generateCatFactTest()
             Fact(localFacts)
         }
-            .filter {
-                it.text != localFacts
-            }
+            .distinctUntilChanged()
     }
 
     private fun generateCatFactTest() =
