@@ -6,9 +6,7 @@ import io.reactivex.Single
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
-class LocalCatFactsGenerator(
-    private val context: Context
-) {
+class LocalCatFactsGenerator(private val context: Context) {
 
     /**
      * Реализуйте функцию otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFact так,
@@ -27,7 +25,7 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> {
         return Flowable.interval(2, TimeUnit.SECONDS)
             .map { generatedRandomFact() }
-            .distinctUntilChanged{ oldFact, newFact -> oldFact.text == newFact.text }
+            .distinctUntilChanged()
     }
 
     private fun generatedRandomFact(): Fact {

@@ -9,13 +9,11 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
-import retrofit2.Response
+import java.net.UnknownHostException
 
 fun Disposable.addTo(compositeDisposable: CompositeDisposable){
     compositeDisposable.add(this)
 }
-
-val Response<*>.isSuccess: Boolean get() = this.isSuccessful && this.body() != null
 
 class CatsViewModel(
     private val catsService: CatsService,
@@ -23,6 +21,7 @@ class CatsViewModel(
 ) : ViewModel() {
 
     private val compositeDisposable = CompositeDisposable()
+    private val errMessage = R.string.default_error_text
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
@@ -31,28 +30,11 @@ class CatsViewModel(
         getFacts()
     }
 
-//    fun getFacts(){
-//       catsService.getCatFact()
-//            .subscribeOn(Schedulers.io())
-//            .observeOn(AndroidSchedulers.mainThread())
-//            .subscribe(::handleSuccess, ::handleError)
-//            .addTo(compositeDisposable)
-//    }
-
-//    private fun handleSuccess(response: Response<Fact>) {
-//        if (response.isSuccess){
-//            _catsLiveData.value = Success(response.body()!!)
-//        }else{
-//            _catsLiveData.value = response.errorBody()?.let { Error(it.string()) } ?: ErrorRes(R.string.default_error_text)
-//        }
-//    }
-
     private fun getFacts() {
         localCatFactsGenerator.generateCatFactPeriodically()
             .flatMapSingle {
                 catsService.getCatFact()
                     .subscribeOn(Schedulers.io())
-                    .map(::getData)
                     .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
             }
             .subscribeOn(Schedulers.io())
@@ -67,16 +49,10 @@ class CatsViewModel(
 
     private fun handleError(throwable: Throwable) {
         throwable.printStackTrace()
-        _catsLiveData.value = ServerError
-    }
-
-    private fun getData(response: Response<Fact>): Fact{
-        if (response.isSuccess){
-             return response.body()!!
-        }else{
-            _catsLiveData.value = response.errorBody()?.let { Error(it.string()) } ?: ErrorRes(R.string.default_error_text)
-             return Fact("")
-        }
+        if (throwable is UnknownHostException)
+            _catsLiveData.value = ServerError
+        else
+            _catsLiveData.value = ErrorRes(errMessage)
     }
 
     override fun onCleared() {
