@@ -2,22 +2,14 @@ package otus.homework.reactivecats
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import io.reactivex.BackpressureOverflowStrategy
-import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import kotlinx.coroutines.Dispatchers
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.util.concurrent.TimeUnit
-import kotlin.math.log
 
 class CatsViewModel(
     private val catsService: CatsService,
@@ -28,13 +20,20 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    private val compositeDisposable = CompositeDisposable()
     init {
-        compositeDisposable.add(getFacts())
+//        localCatFactsGenerator.generateCatFactPeriodically()
+//            .subscribeOn(Schedulers.io())
+//            .observeOn(AndroidSchedulers.mainThread())
+//            .doOnNext {
+//                println(it.text)
+//            }
+//            .subscribe()
+
+        getFacts()
     }
 
     @SuppressLint("CheckResult")
-    fun getFacts() = catsService.getCatFact()
+    private fun getFacts() = catsService.getCatFact()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .doOnSuccess { _catsLiveData.value = Success(it) }
@@ -54,8 +53,7 @@ class CatsViewModelFactory(
     private val context: Context
 ) :
     ViewModelProvider.NewInstanceFactory() {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T =
+    override fun <T : ViewModel> create(modelClass: Class<T>): T =
         CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
 }
 
