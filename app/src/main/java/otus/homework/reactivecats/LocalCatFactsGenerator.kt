@@ -1,7 +1,6 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import android.util.Log
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.Single
@@ -32,7 +31,11 @@ class LocalCatFactsGenerator(
 
         return Flowable.create<Fact>({ emitter ->
             while (true) {
-                val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(localCatFactsArray.size - 1)])
+                val success = Fact(
+                    context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(
+                        localCatFactsArray.size - 1
+                    )]
+                )
                 emitter.onNext(success)
                 Thread.sleep(2000)
             }
