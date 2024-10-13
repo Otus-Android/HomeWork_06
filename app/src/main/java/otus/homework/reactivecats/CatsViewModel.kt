@@ -1,44 +1,48 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Flowable
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.Disposable
+import io.reactivex.functions.Consumer
+import io.reactivex.subjects.BehaviorSubject
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
 ) : ViewModel() {
 
-    private val _catsLiveData = MutableLiveData<Result>()
-    val catsLiveData: LiveData<Result> = _catsLiveData
+    private val _catsLiveData = BehaviorSubject.create<Result>()
+    val catsLiveData: Observable<Result> = _catsLiveData
+        .observeOn(AndroidSchedulers.mainThread())
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+    private val initSubscription: Disposable = catsService.getCatFact()
+        .map<Result> { Success(it) }
+        .onErrorReturn { ServerError }
+        .subscribe(Consumer { _catsLiveData.onNext(it) })
+    private var timerSubscription: Disposable? = null
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
+    fun getFacts() {
+        if (timerSubscription != null) return
+        timerSubscription = Flowable.interval(2000, TimeUnit.MILLISECONDS)
+            .concatMapSingle {
+                return@concatMapSingle catsService.getCatFact()
+                    .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
             }
-        })
+            .map<Result> { Success(it) }
+            .subscribe { _catsLiveData.onNext(it) }
     }
 
-    fun getFacts() {}
+    override fun onCleared() {
+        super.onCleared()
+        initSubscription.dispose()
+        timerSubscription?.dispose()
+        _catsLiveData.onComplete()
+    }
 }
 
 class CatsViewModelFactory(
@@ -49,7 +53,7 @@ class CatsViewModelFactory(
     ViewModelProvider.NewInstanceFactory() {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
+        CatsViewModel(catsRepository, localCatFactsGenerator) as T
 }
 
 sealed class Result
