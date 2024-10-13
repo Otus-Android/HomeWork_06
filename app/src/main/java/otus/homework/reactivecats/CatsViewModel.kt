@@ -14,9 +14,9 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    val catsService: CatsService,
+    val localCatFactsGenerator: LocalCatFactsGenerator,
+    val context: Context
 ) : ViewModel() {
 
     private val compositeDisposable = CompositeDisposable()
@@ -24,6 +24,21 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
+        getLocalFact()
+    }
+
+    private fun getLocalFact() {
+        compositeDisposable.add(
+            localCatFactsGenerator.generateCatFact()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { response ->
+                    _catsLiveData.value = Success(response)
+                }
+        )
+    }
+
+    private fun getFacts() {
         compositeDisposable.add(
             catsService.getCatFact()
                 .subscribeOn(Schedulers.io())
@@ -42,8 +57,6 @@ class CatsViewModel(
                 }
         )
     }
-
-    fun getFacts() {}
 
     override fun onCleared() {
         compositeDisposable.clear()
