@@ -27,7 +27,7 @@ class CatsViewModel(
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        getLocalFactPeriod()
+        getFacts()
     }
 
     private fun getLocalFact() {
@@ -54,10 +54,13 @@ class CatsViewModel(
 
     private fun getFacts() {
         compositeDisposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
+            Observable.interval(2, TimeUnit.SECONDS, Schedulers.io())
+                .flatMap { catsService.getCatFact().map { it } }
+                .doOnError {
+                    getLocalFact()
+                }
+                .retry()
                 .observeOn(AndroidSchedulers.mainThread())
-                .doOnError { _catsLiveData.value = ServerError }
                 .subscribe {
                     if (it.isSuccessful && it.body() != null) {
                         _catsLiveData.value = Success(it.body()!!)
