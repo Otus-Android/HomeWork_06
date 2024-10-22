@@ -1,9 +1,9 @@
 package otus.homework.reactivecats
 
 import android.content.Context
-import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.Single
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
@@ -29,17 +29,14 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> {
         val localCatFactsArray = context.resources.getStringArray(R.array.local_cat_facts)
 
-        return Flowable.create<Fact>({ emitter ->
-            while (true) {
-                val success = Fact(
+        return Flowable.interval(2000, TimeUnit.MILLISECONDS)
+            .map {
+                Fact(
                     context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(
                         localCatFactsArray.size - 1
                     )]
                 )
-                emitter.onNext(success)
-                Thread.sleep(2000)
             }
-        }, BackpressureStrategy.BUFFER)
             .distinctUntilChanged()
     }
 }
