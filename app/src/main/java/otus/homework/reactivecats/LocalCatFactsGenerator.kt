@@ -30,6 +30,6 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> {
         return Flowable.interval(2, TimeUnit.SECONDS)
             .map { Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)]) }
-            .retry()
+            .distinctUntilChanged()
     }
 }
