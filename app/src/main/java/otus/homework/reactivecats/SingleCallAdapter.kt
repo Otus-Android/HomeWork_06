@@ -37,7 +37,7 @@ class SingleCallAdapterFactory private constructor(): CallAdapter.Factory() {
         try {
             val enclosingType = returnType as ParameterizedType
 
-            if (getRawType(enclosingType) != Single::class.java) {
+            if (enclosingType.rawType != Single::class.java) {
                 return null
             }
 
