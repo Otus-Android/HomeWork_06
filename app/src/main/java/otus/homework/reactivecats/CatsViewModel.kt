@@ -6,10 +6,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.Disposable
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
 
@@ -26,7 +26,7 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    private val disposables = ArrayList<Disposable>()
+    private val disposables = CompositeDisposable()
 
     private val resources = context.resources
 
@@ -48,63 +48,30 @@ class CatsViewModel(
             ).also { disposables.add(it) }
     }
 
-//    init {
-//        catsService.getCatFact().enqueue(object : Callback<Fact> {
-//            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-//                if (response.isSuccessful && response.body() != null) {
-//                    _catsLiveData.value = Success(response.body()!!)
-//                } else {
-//                    _catsLiveData.value = Error(
-//                        response.errorBody()?.string() ?: context.getString(
-//                            R.string.default_error_text
-//                        )
-//                    )
-//                }
-//            }
-//
-//            override fun onFailure(call: Call<Fact>, t: Throwable) {
-//                _catsLiveData.value = ServerError
-//            }
-//        })
-//    }
+    private fun getFactsPeriodicallyObservable(): Observable<Fact> =
+        Observable.interval(2000, TimeUnit.MILLISECONDS)
+            .flatMapSingle {
+                Log.i(TAG, "attempting to get fact")
+                catsService.getCatFact()
+            }
 
     fun getFacts() {
 
-        catsService.getCatFact()
-            .subscribeOn(Schedulers.computation())
-            .delay(2000, TimeUnit.MILLISECONDS)
+        getFactsPeriodicallyObservable()
+            .onErrorReturn { localCatFactsGenerator.generateCatFact() }
+            .repeat()
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                {
-                    Log.i(TAG, "remote fact: ${it.text}")
-                    _catsLiveData.value = Success(it)
-                    getFacts()
-                },
-                { error ->
-
-                    disposables.clear()
-
-                    val fallbackResult = localCatFactsGenerator
-                        .generateCatFact()
-                        .subscribeOn(Schedulers.computation())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(
-                            {
-                                Log.i(TAG, "error: ${error.message}")
-                                _catsLiveData.value = Success(it)
-                                getFacts()
-                            },
-                            {
-                                Error(resources.getString(R.string.default_error_text))
-                            }
-                        )
-                }
-            ).also { disposables.add(it) }
+            .subscribe {
+                Log.i(TAG, "fact: ${it.text}")
+                _catsLiveData.value = Success(it)
+            }.also {
+                disposables.add(it)
+            }
     }
 
     override fun onCleared() {
         super.onCleared()
-        disposables.forEach { it.dispose() }
+        disposables.dispose()
     }
 }
 
