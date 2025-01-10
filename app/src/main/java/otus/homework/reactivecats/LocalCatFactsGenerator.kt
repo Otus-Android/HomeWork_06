@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 class LocalCatFactsGenerator(
-    private val context: Context
+    context: Context
 ) {
     private val catFacts = context.resources.getStringArray(R.array.local_cat_facts)
 
@@ -31,8 +31,8 @@ class LocalCatFactsGenerator(
             2000L,
             TimeUnit.MILLISECONDS,
             Schedulers.computation()
-        ).flatMap {
-            Flowable.fromCallable { getLocalCatFact() }
+        ).map {
+           getLocalCatFact()
         }.distinctUntilChanged()
     }
 
