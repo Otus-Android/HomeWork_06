@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
@@ -12,38 +13,43 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.HttpException
 import retrofit2.Response
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
     private val disposable: CompositeDisposable = CompositeDisposable()
+    private val defErrorText = context.getString(R.string.default_error_text)
 
     init {
-        val dispose = catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ catFact ->
-                _catsLiveData.value = Success(catFact)
-            }, { error ->
-                if (error is HttpException) {
-                    _catsLiveData.value = ServerError
-                } else {
-                    _catsLiveData.value = Error(
-                        error.message ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            })
-        disposable.add(dispose)
+        getFacts()
     }
 
-    fun getFacts() {}
+    fun getFacts() {
+        val dispose = Observable.interval(200L, TimeUnit.MILLISECONDS, Schedulers.computation())
+            .subscribeOn(Schedulers.io())
+            .flatMap {
+                catsService.getCatFact()
+                    .onErrorResumeNext {
+                        localCatFactsGenerator.generateCatFact()
+                    }.toObservable()
+
+            }
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { catFact ->
+                    _catsLiveData.value = Success(catFact)
+                },
+                { throwable ->
+                    _catsLiveData.value = Error(throwable.message ?: defErrorText)
+                })
+        disposable.add(dispose)
+    }
 
     override fun onCleared() {
         super.onCleared()
