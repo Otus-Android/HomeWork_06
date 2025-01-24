@@ -31,6 +31,8 @@ class LocalCatFactsGenerator(
             }.distinctUntilChanged()
     }
 
-    private fun getRandomFact() =
-        Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
+    private fun getRandomFact(): Fact {
+        val facts = context.resources.getStringArray(R.array.local_cat_facts)
+        return Fact(facts[Random.nextInt(facts.size)])
+    }
 }
