@@ -35,6 +35,11 @@ class CatsViewModel(
     }
 
     fun getFacts() {}
+
+    override fun onCleared() {
+        super.onCleared()
+        compositeDisposable.clear()
+    }
 }
 
 class CatsViewModelFactory(
