@@ -27,7 +27,7 @@ class CatsViewModel(
     init {
         // получение фактов от сервера и локальных в случае ошибки
         getFactsPeriodically()
-        // получение локальных файлов
+        // получение локальных фактов
         // viewModelScope.launch(Dispatchers.IO) { observeLocalFacts() }
     }
 
