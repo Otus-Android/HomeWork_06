@@ -1,4 +1,4 @@
-package otus.homework.reactivecats
+package otus.homework.reactivecats.data
 
 import com.google.gson.annotations.SerializedName
 

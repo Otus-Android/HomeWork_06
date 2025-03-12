@@ -1,9 +1,11 @@
-package otus.homework.reactivecats
+package otus.homework.reactivecats.presentation
 
 import android.content.Context
 import android.util.AttributeSet
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import otus.homework.reactivecats.data.Fact
+import otus.homework.reactivecats.R
 
 class CatsView @JvmOverloads constructor(
     context: Context,
