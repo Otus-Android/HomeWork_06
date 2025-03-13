@@ -34,7 +34,10 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText (this, result.message, Toast.LENGTH_LONG).show()
                     view.populate(result.fact)
                 }
-                ServerError -> Snackbar.make(view, "Network error", 1000).show()
+                ServerError -> {
+                    Snackbar.make(view, "Network error", 1000).show()
+                    view.populate(getString(R.string.empty_dash))
+                }
             }
         }
     }

@@ -10,8 +10,8 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.observers.DisposableSingleObserver
 import io.reactivex.schedulers.Schedulers
-import otus.homework.reactivecats.data.Fact
 import otus.homework.reactivecats.domain.CatsInteractor
+import java.io.IOException
 
 class CatsViewModel(
     private val appContext: Context,
@@ -32,21 +32,23 @@ class CatsViewModel(
         )
     }
 
-    private val catFactObserver: DisposableSingleObserver<Fact>
-        get() = object : DisposableSingleObserver<Fact>() {
-            override fun onSuccess(fact: Fact) {
+    private val catFactObserver: DisposableSingleObserver<String>
+        get() = object : DisposableSingleObserver<String>() {
+            override fun onSuccess(fact: String) {
                 Log.e(null, "[catFactObserver]: remote fact obtained")
                 _catsLiveData.value = Result.Success(fact)
             }
 
             override fun onError(e: Throwable) {
-                when (e as Exception) {
-
+                if (e is IOException) {
+                    _catsLiveData.value = Result.ServerError
                 }
-                Log.e(null, "[catFactObserver]: ${e.message}")
-                val fact = catsInteractor.getLocalCatFact(appContext).blockingGet()
-//                val fact = catsInteractor.getLocalCatFactPeriodically(appContext).toObservable().blockingFirst()
-                _catsLiveData.value = Result.Error(fact, "Remote fact unavailable, local generated")
+                else {
+                    Log.e(null, "[catFactObserver]: ${e.message}")
+                    val fact = catsInteractor.getLocalCatFact(appContext).blockingGet()
+    //                val fact = catsInteractor.getLocalCatFactPeriodically(appContext).toObservable().blockingFirst()
+                    _catsLiveData.value = Result.Error(fact.text, "Remote fact unavailable, local generated")
+                }
             }
         }
 
@@ -59,7 +61,7 @@ class CatsViewModel(
 }
 
 sealed class Result {
-    data class Success(val fact: Fact) : Result()
-    data class Error(val fact: Fact, val message: String) : Result()
+    data class Success(val fact: String) : Result()
+    data class Error(val fact: String, val message: String) : Result()
     data object ServerError : Result()
 }
