@@ -7,6 +7,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.HttpException
 import java.io.IOException
@@ -21,26 +22,36 @@ class CatsViewModel(
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
+    // Для управления подписками и их очистки
+    private val disposables = CompositeDisposable()
+
     init {
-        catsService.getCatFact()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                { fact ->
-                    _catsLiveData.value = Success(fact)
-                },
-                { error ->
-                    _catsLiveData.value = when (error) {
-                        is HttpException -> {
-                            val errorMessage = error.response()?.errorBody()?.string()
-                                ?: context.getString(R.string.default_error_text)
-                            Error(errorMessage)
+        disposables.add(
+            catsService.getCatFact()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { fact ->
+                        _catsLiveData.value = Success(fact)
+                    },
+                    { error ->
+                        _catsLiveData.value = when (error) {
+                            is HttpException -> {
+                                val errorMessage = error.response()?.errorBody()?.string()
+                                    ?: context.getString(R.string.default_error_text)
+                                Error(errorMessage)
+                            }
+                            is IOException -> ServerError
+                            else -> Error(error.message ?: context.getString(R.string.default_error_text))
                         }
-                        is IOException -> ServerError
-                        else -> Error(error.message ?: context.getString(R.string.default_error_text))
                     }
-                }
-            )
+                )
+        )
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        disposables.clear()
     }
 
     fun getFacts() {}
