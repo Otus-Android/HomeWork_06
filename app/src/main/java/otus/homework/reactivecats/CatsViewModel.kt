@@ -6,11 +6,14 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.HttpException
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 @SuppressLint("CheckResult")
 class CatsViewModel(
@@ -27,7 +30,18 @@ class CatsViewModel(
 
     init {
         disposables.add(
-            catsService.getCatFact()
+            Flowable
+                .interval(2, TimeUnit.SECONDS)
+                .flatMapSingle {
+                    catsService.getCatFact()
+                        .onErrorResumeNext { error ->
+                            if (error is IOException || error is HttpException) {
+                                localCatFactsGenerator.generateCatFact()
+                            } else {
+                                Single.error(error)
+                            }
+                        }
+                }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
@@ -54,7 +68,6 @@ class CatsViewModel(
         disposables.clear()
     }
 
-    fun getFacts() {}
 }
 
 class CatsViewModelFactory(
