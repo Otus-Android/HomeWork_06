@@ -5,40 +5,61 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Flowable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
+import retrofit2.HttpException
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    val catsService: CatsService,
+    val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
+
+    private val disposables = CompositeDisposable()
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
     init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
+        disposables.add(
+            catsService.getCatFact()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ data ->
+                    _catsLiveData.value = Success(data)
+                }, { throwable ->
+                    _catsLiveData.value = when (throwable) {
+                        is IOException -> ServerError
+                        is HttpException -> Error(
+                            throwable.response()?.errorBody()?.string() ?: context.getString(
+                                R.string.default_error_text
+                            )
                         )
-                    )
-                }
-            }
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+                        else -> Error(context.getString(R.string.default_error_text))
+                    }
+
+                })
+        )
     }
 
-    fun getFacts() {}
+    fun getFacts(): Flowable<Fact> {
+        return Flowable.interval(2, TimeUnit.SECONDS, Schedulers.io())
+            .flatMapSingle { _ ->
+                catsService.getCatFact()
+                    .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
+                    .subscribeOn(Schedulers.io())
+            }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        disposables.clear()
+    }
 }
 
 class CatsViewModelFactory(
