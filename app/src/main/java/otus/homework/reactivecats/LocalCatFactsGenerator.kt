@@ -30,7 +30,8 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
-        return Flowable.empty()
+        return Flowable.concat(Flowable.just(_generateCatFact()), Flowable.interval(timeout, TimeUnit.MILLISECONDS).flatMap {
+            Flowable.just(_generateCatFact())
+        }).distinctUntilChanged().onBackpressureLatest()
     }
 }
