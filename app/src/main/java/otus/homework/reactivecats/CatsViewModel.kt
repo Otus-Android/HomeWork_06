@@ -57,7 +57,27 @@ class CatsViewModel(
 //        getFacts()
     }
 
-    fun getFacts() {}
+    fun getFacts() {
+        compositeDisposable.add(
+            Observable.interval(timeout, TimeUnit.MILLISECONDS).flatMapSingle {
+                catsService.getCatFact()
+            }.onErrorResumeNext (
+                localCatFactsGenerator.generateCatFact().toObservable()
+            ).subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { n ->
+                        _catsLiveData.value = Success(n)
+                    }, { e ->
+                        if (e is HttpException) {
+                            _catsLiveData.value = Error(e.message ?: error)
+                        } else {
+                            _catsLiveData.value = ServerError
+                        }
+                    }, {}, {}
+                )
+        )
+    }
 
     override fun onCleared() {
         if (!compositeDisposable.isDisposed) {
