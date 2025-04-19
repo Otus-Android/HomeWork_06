@@ -26,7 +26,6 @@ class LocalCatFactsGenerator(
      * Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
      */
     fun generateCatFactPeriodically(): Flowable<Fact> {
-        val success = getRandomFact()
         return Flowable
             .interval(2000L, TimeUnit.MILLISECONDS)
             .map { getRandomFact() }
