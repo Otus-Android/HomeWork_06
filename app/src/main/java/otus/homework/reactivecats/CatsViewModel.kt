@@ -44,12 +44,12 @@ class CatsViewModel(
     private fun getFacts() {
         compositeDisposable.add(Observable
             .interval(2, TimeUnit.SECONDS)
-            .map { getSingleFact() }
+            .map { getLocalFact() }
             .distinct()
             .subscribe { })
     }
 
-    private fun getSingleFact() {
+    private fun getLocalFact() {
         compositeDisposable.add(
             catsService.getCatFact()
                 .subscribeOn(Schedulers.io())
