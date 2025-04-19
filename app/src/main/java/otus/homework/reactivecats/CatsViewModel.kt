@@ -2,18 +2,22 @@ package otus.homework.reactivecats
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.HttpException
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
     private val catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
     context: Context
 ) : ViewModel() {
 
@@ -22,15 +26,7 @@ class CatsViewModel(
     private val compositeDisposable = CompositeDisposable()
 
     init {
-        compositeDisposable.add(
-            catsService.getCatFact()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    { fact -> onCatsServiceSuccess(fact) },
-                    { error -> onCatsServiceError(error) }
-                )
-        )
+        getFacts()
     }
 
     private fun onCatsServiceSuccess(fact: Fact) {
@@ -45,7 +41,27 @@ class CatsViewModel(
         }
     }
 
-    fun getFacts() {}
+    private fun getFacts() {
+        compositeDisposable.add(Observable
+            .interval(2, TimeUnit.SECONDS)
+            .map { getSingleFact() }
+            .distinct()
+            .subscribe { })
+    }
+
+    private fun getSingleFact() {
+        compositeDisposable.add(
+            catsService.getCatFact()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .onErrorResumeNext {
+                    localCatFactsGenerator.generateCatFact()
+                }
+                .subscribe(
+                    { fact -> onCatsServiceSuccess(fact) },
+                    { error -> onCatsServiceError(error) })
+        )
+    }
 
     override fun onCleared() {
         compositeDisposable.clear()
@@ -58,8 +74,7 @@ class CatsViewModelFactory(
     private val catsRepository: CatsService,
     private val localCatFactsGenerator: LocalCatFactsGenerator,
     private val context: Context
-) :
-    ViewModelProvider.NewInstanceFactory() {
+) : ViewModelProvider.NewInstanceFactory() {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
         CatsViewModel(catsRepository, localCatFactsGenerator, context) as T
