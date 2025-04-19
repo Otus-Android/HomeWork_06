@@ -1,13 +1,10 @@
 package otus.homework.reactivecats
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -68,7 +65,6 @@ class CatsViewModel(
         super.onCleared()
     }
 }
-
 
 class CatsViewModelFactory(
     private val catsRepository: CatsService,
