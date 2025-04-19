@@ -11,8 +11,6 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import retrofit2.HttpException
 
-
-@SuppressLint("CheckResult")
 class CatsViewModel(
     private val catsService: CatsService,
     localCatFactsGenerator: LocalCatFactsGenerator,
