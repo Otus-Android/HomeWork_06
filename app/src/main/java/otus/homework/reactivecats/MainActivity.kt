@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(view)
         catsViewModel.catsLiveData.observe(this) { result ->
             when (result) {
+                is Loading ->  Snackbar.make(view, "Loading ...", 1000).show()
                 is Success -> view.populate(result.fact)
                 is Error -> Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                 ServerError -> Snackbar.make(view, "Network error", 1000).show()
