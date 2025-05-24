@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
 
 @SuppressLint("CheckResult")
 class CatsViewModel(
@@ -23,7 +24,8 @@ class CatsViewModel(
 
     init {
         disposable.add(
-            catsService.getCatFact()
+          //  catsService.getCatFact()
+            localCatFactsGenerator.generateCatFactPeriodically(context)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
@@ -45,7 +47,7 @@ class CatsViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        disposable.clear()
+        disposable.dispose()
     }
 }
 
