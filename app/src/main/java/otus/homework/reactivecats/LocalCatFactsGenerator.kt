@@ -15,7 +15,9 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
     fun generateCatFact(): Single<Fact> {
-        return Single.never()
+        return Single.create { emitter ->
+            emitter.onSuccess(getRandomCatFact(context))
+        }
     }
 
     /**
@@ -26,5 +28,10 @@ class LocalCatFactsGenerator(
     fun generateCatFactPeriodically(): Flowable<Fact> {
         val success = Fact(context.resources.getStringArray(R.array.local_cat_facts)[Random.nextInt(5)])
         return Flowable.empty()
+    }
+
+    private fun getRandomCatFact(context: Context): Fact {
+       val localCatFacts = context.resources.getStringArray(R.array.local_cat_facts)
+       return Fact(localCatFacts[Random.nextInt(localCatFacts.size)])
     }
 }
