@@ -6,6 +6,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.reactivex.Flowable
+
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
@@ -23,27 +25,31 @@ class CatsViewModel(
     val disposable = CompositeDisposable()
 
     init {
-        disposable.add(
-          //  catsService.getCatFact()
-            localCatFactsGenerator.generateCatFactPeriodically(context)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    { fact ->
-                        _catsLiveData.value = Success(fact)
-                    },
-                    { error ->
-                        if (error.message?.contains("HTTP 5") ?: false) {
-                            _catsLiveData.value = ServerError
-                        } else {
-                            _catsLiveData.value = Error(error.message.toString())
-                        }
-                    }
-                )
+        getFacts(
+            catsService = catsService,
+            context = context,
+            localCatFactsGenerator = localCatFactsGenerator
         )
     }
 
-    fun getFacts() {}
+    fun getFacts(catsService: CatsService, localCatFactsGenerator: LocalCatFactsGenerator, context: Context) {
+        val dis = Flowable.interval(0, 2, TimeUnit.SECONDS)
+            .flatMapSingle {
+                catsService.getCatFact()
+                    .onErrorResumeNext { localCatFactsGenerator.generateCatFact(context) }
+            }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    _catsLiveData.value = Success(it)
+                },
+                {
+                    _catsLiveData.value = Error(it.message.toString())
+                }
+            )
+        disposable.add(dis)
+    }
 
     override fun onCleared() {
         super.onCleared()
