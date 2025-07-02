@@ -23,7 +23,7 @@ class CatsViewModel(
 
     init {
         observable.add(
-            catsService.getCatFact()
+            localCatFactsGenerator.generateCatFactPeriodically()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
@@ -53,7 +53,7 @@ class CatsViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        observable.clear()
+        observable.dispose()
     }
 }
 
