@@ -8,7 +8,8 @@ class DiContainer {
 
     private val retrofit by lazy {
         Retrofit.Builder()
-            .baseUrl("https://cat-fact.herokuapp.com/facts/")
+            //.baseUrl("https://cat-fact.herokuapp.com/facts/")
+            .baseUrl("https://catfact.ninja/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
