@@ -1,11 +1,39 @@
 # ReactiveCats
 
-1. Переведите сетевой запрос с `retrofit.Call` на RX цепочку. Для этого подключите Retrofit адаптер, поменяйте возвращаемые типы функций
+## Задание: Миграция с колбеков на RxJava2
 
-2. Поменяйте логику в `CatsViewModel.kt` с колбеков на RX. Логику обработки успеха/ошибки из коллбека необходимо перенести в терминальные коллбеки RX цепочки. Не забудьте очистить подписки когда `ViewModel` уничтожается
+### Что нужно сделать:
 
-3. Реализуйте функцию `otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFact`, так, чтобы она возвращала `Fact` со случайной строкой  из массива строк `R.array.local_cat_facts` обернутую в подходящий стрим(`Flowable`/`Single`/`Observable` и т.п)
+1. **Подключить RxJava2 к Retrofit**
+   - Добавить `retrofit2:adapter-rxjava2` в зависимости
+   - Изменить `CatsService.getCatFact()` чтобы возвращал `Single<Fact>` вместо `Call<Fact>`
 
-4. Реализуйте функцию `otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFactPeriodically` так, чтобы она эмитила `Fact` со случайной строкой из массива строк `R.array.local_cat_facts` каждые 2000 миллисекунд. Если вновь заэмиченный Fact совпадает с предыдущим - пропускаем элемент.
+2. **Переписать CatsViewModel на RxJava2**
+   - Убрать колбеки из `init` блока
+   - Реализовать `getFacts()` с помощью RxJava2
+   - Использовать `CompositeDisposable` для управления подписками, не забыть отписаться
 
-5. Реализуйте функцию `otus.homework.reactivecats.CatsViewModel#getFacts` следующим образом:  каждые 2 секунды идем в сеть за новым фактом, если сетевой запрос завершился неуспешно, то в качестве фоллбека идем за фактом в уже реализованный `otus.homework.reactivecats.LocalCatFactsGenerator#generateCatFact`.
+3. **Реализовать LocalCatFactsGenerator.generateCatFact()**
+   - Возвращать `Single<Fact>` со случайным фактом из `R.array.local_cat_facts`
+   - Использовать `Single.fromCallable()` или `Single.just()`
+
+4. **Реализовать LocalCatFactsGenerator.generateCatFactPeriodically()**
+   - Эмитить `Fact` каждые 2 секунды
+   - Пропускать дублирующиеся факты
+
+5. **Реализовать CatsViewModel.getFacts()**
+   - Каждые 2 секунды запрашивать факт из сети
+   - При ошибке сети - использовать `LocalCatFactsGenerator.generateCatFact()` как фоллбек
+   - Использовать `onErrorResumeNext()` для обработки ошибок
+
+### Подсказки:
+- `Single` - для одноразовых операций
+- `Flowable` - для периодических/непрерывных потоков
+- `CompositeDisposable` - для управления подписками
+- `distinctUntilChanged()` - для исключения дубликатов
+- `onErrorResumeNext()` - для фоллбека при ошибках
+
+### Что проверить:
+- Факты обновляются каждые 2 секунды
+- При отключенном интернете показываются локальные факты
+- Нет дублирующихся фактов подряд
