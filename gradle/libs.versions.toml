@@ -15,6 +15,7 @@ picasso = "2.71828"
 retrofit = "2.9.0"
 rxandroid = "2.1.1"
 rxjava = "2.2.21"
+rxjava2 = "3.0.0"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -33,6 +34,7 @@ retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = 
 retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 rxandroid = { module = "io.reactivex.rxjava2:rxandroid", version.ref = "rxandroid" }
 rxjava = { module = "io.reactivex.rxjava2:rxjava", version.ref = "rxjava" }
+retrofit2= {group = "com.squareup.retrofit2", name ="adapter-rxjava2", version.ref = "rxjava2"}
 
 [bundles]
 network = ["okhttp", "okhttp-logging-interceptor", "retrofit", "retrofit-converter-gson"]
