@@ -3,6 +3,10 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 android {
     namespace 'otus.homework.reactivecats'
     compileSdk 36
@@ -25,9 +29,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
     buildFeatures {
         viewBinding true
     }
@@ -43,6 +44,7 @@ dependencies {
     implementation libs.fragment.ktx
     implementation libs.lifecycle.runtime.ktx
     implementation libs.bundles.network
+    implementation libs.retrofit.adapter.rxjava2
     implementation libs.gson
     implementation libs.picasso
     implementation libs.rxjava
