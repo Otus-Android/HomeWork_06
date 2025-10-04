@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Reactive Cats</string>
     <string name="default_error_text">No cats available</string>
+    <string name="network_error_message">Network error. Showing local fact.</string>
 
 
     <string-array name="local_cat_facts">
