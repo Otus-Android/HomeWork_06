@@ -22,6 +22,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val view = layoutInflater.inflate(R.layout.activity_main, null) as CatsView
         setContentView(view)
+        catsViewModel.getFacts()
         catsViewModel.catsLiveData.observe(this) { result ->
             when (result) {
                 is Success -> view.populate(result.fact)
