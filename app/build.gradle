@@ -47,4 +47,7 @@ dependencies {
     implementation libs.picasso
     implementation libs.rxjava
     implementation libs.rxandroid
+    implementation libs.rx.android.adapter
+    implementation libs.retrofit
+    implementation libs.retrofit.converter.gson
 }
