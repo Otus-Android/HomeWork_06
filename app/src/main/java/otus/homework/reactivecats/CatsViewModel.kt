@@ -5,40 +5,127 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.Flowable
+import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
+import retrofit2.HttpException
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class CatsViewModel(
-    catsService: CatsService,
-    localCatFactsGenerator: LocalCatFactsGenerator,
-    context: Context
+    private val catsService: CatsService,
+    private val localCatFactsGenerator: LocalCatFactsGenerator,
+    private val context: Context
 ) : ViewModel() {
 
     private val _catsLiveData = MutableLiveData<Result>()
     val catsLiveData: LiveData<Result> = _catsLiveData
 
-    init {
-        catsService.getCatFact().enqueue(object : Callback<Fact> {
-            override fun onResponse(call: Call<Fact>, response: Response<Fact>) {
-                if (response.isSuccessful && response.body() != null) {
-                    _catsLiveData.value = Success(response.body()!!)
-                } else {
-                    _catsLiveData.value = Error(
-                        response.errorBody()?.string() ?: context.getString(
-                            R.string.default_error_text
-                        )
-                    )
-                }
-            }
+    private val compositeDisposable = CompositeDisposable()
 
-            override fun onFailure(call: Call<Fact>, t: Throwable) {
-                _catsLiveData.value = ServerError
-            }
-        })
+    private var isPeriodicUpdatesActive = false
+
+    init {
+        getSingleFact()
     }
 
-    fun getFacts() {}
+    fun getFacts() {
+        if (isPeriodicUpdatesActive) {
+            stopPeriodicUpdates()
+            return
+        }
+
+        isPeriodicUpdatesActive = true
+
+        val disposable = Flowable.interval(0, 2, TimeUnit.SECONDS)
+            .flatMapSingle { _ ->
+                catsService.getCatFact()
+                    .subscribeOn(Schedulers.io())
+                    .onErrorResumeNext { throwable: Throwable ->
+                        if (throwable is IOException || throwable is HttpException) {
+                            localCatFactsGenerator.generateCatFact()
+                                .subscribeOn(Schedulers.io())
+                        } else {
+                            Single.error(throwable)
+                        }
+                    }
+            }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact ->
+                    _catsLiveData.value = Success(fact)
+                },
+                { throwable ->
+                    handleError(throwable)
+                    isPeriodicUpdatesActive = false
+                }
+            )
+
+        compositeDisposable.add(disposable)
+    }
+
+    fun getSingleFact() {
+        val disposable = catsService.getCatFact()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact ->
+                    _catsLiveData.value = Success(fact)
+                },
+                { throwable ->
+                    handleError(throwable)
+                }
+            )
+
+        compositeDisposable.add(disposable)
+    }
+
+    fun stopPeriodicUpdates() {
+        isPeriodicUpdatesActive = false
+        compositeDisposable.clear()
+    }
+
+    private fun handleError(throwable: Throwable) {
+        when (throwable) {
+            is HttpException -> {
+                val errorBody = throwable.response()?.errorBody()?.string()
+                    ?: context.getString(R.string.default_error_text)
+                _catsLiveData.value = Error(errorBody)
+            }
+
+            is IOException -> {
+                getLocalFactAsFallback()
+            }
+
+            else -> {
+                _catsLiveData.value = Error(context.getString(R.string.default_error_text))
+            }
+        }
+    }
+
+    private fun getLocalFactAsFallback() {
+        val disposable = localCatFactsGenerator.generateCatFact()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { fact ->
+                    _catsLiveData.value = Success(fact)
+                },
+                { error ->
+                    _catsLiveData.value = ServerError
+                }
+            )
+
+        compositeDisposable.add(disposable)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        compositeDisposable.clear()
+    }
 }
 
 class CatsViewModelFactory(
