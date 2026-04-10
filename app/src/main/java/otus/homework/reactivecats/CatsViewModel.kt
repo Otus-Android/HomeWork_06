@@ -50,7 +50,6 @@ class CatsViewModel(
             .interval(2000, TimeUnit.MILLISECONDS)
             .flatMap { catsService.getCatFact() }
             .distinctUntilChanged()
-            .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
     }
