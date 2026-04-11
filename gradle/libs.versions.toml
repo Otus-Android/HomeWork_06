@@ -31,6 +31,7 @@ okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-i
 picasso = { module = "com.squareup.picasso:picasso", version.ref = "picasso" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+retrofit-rxjava= { group = "com.squareup.retrofit2", name = "adapter-rxjava2", version.ref = "retrofit" }
 rxandroid = { module = "io.reactivex.rxjava2:rxandroid", version.ref = "rxandroid" }
 rxjava = { module = "io.reactivex.rxjava2:rxjava", version.ref = "rxjava" }
 
