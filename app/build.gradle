@@ -47,4 +47,5 @@ dependencies {
     implementation libs.picasso
     implementation libs.rxjava
     implementation libs.rxandroid
+    implementation 'com.squareup.retrofit2:adapter-rxjava2:2.7.1'
 }
