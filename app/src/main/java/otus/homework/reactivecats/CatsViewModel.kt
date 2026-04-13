@@ -24,7 +24,7 @@ class CatsViewModel(
     init {
         val getFactsDisposable = getFacts().subscribe(
             { success -> _catsLiveData.value = Success(success) },
-            { error -> Errors(error.toString()) }
+            { error -> _catsLiveData.value = Errors(error.toString()) }
         )
         compositeDisposable.add(getFactsDisposable)
     }
@@ -48,10 +48,12 @@ class CatsViewModel(
     fun getFacts(): Flowable<Fact> {
         return Flowable
             .interval(2000, TimeUnit.MILLISECONDS)
-            .flatMap { catsService.getCatFact() }
+            .flatMapSingle {
+                catsService.getCatFact()
+                    .onErrorResumeNext { localCatFactsGenerator.generateCatFact() }
+            }
             .distinctUntilChanged()
             .observeOn(AndroidSchedulers.mainThread())
-            .onErrorResumeNext(localCatFactsGenerator.generateCatFact())
     }
 }
 

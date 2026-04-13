@@ -2,6 +2,7 @@ package otus.homework.reactivecats
 
 import android.content.Context
 import io.reactivex.Flowable
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
@@ -16,9 +17,9 @@ class LocalCatFactsGenerator(
      * обернутую в подходящий стрим(Flowable/Single/Observable и т.п)
      */
 
-    fun generateCatFact(): Flowable<Fact> {
+    fun generateCatFact(): Single<Fact> {
         val array = context.resources.getStringArray(R.array.local_cat_facts)
-        return Flowable.just(Fact(array.random()))
+        return Single.just(Fact(array.random()))
     }
 
     /**
